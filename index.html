@@ -84,9 +84,13 @@ canvas{width:100%;display:block;background:var(--panel);border-radius:6px;cursor
 <body>
 <header>
   <h1>Cầu dắt xe gấp gọn – bản vẽ khoan &amp; cắt</h1>
-  <span id="dbpill" class="pill off">chưa đăng nhập – lưu trên máy này</span>
-  <span id="loginBox" class="login"><input type="email" id="lg_email" placeholder="email" autocomplete="username"><input type="password" id="lg_pass" placeholder="mật khẩu" autocomplete="current-password"><button class="small" id="btnLogin">Đăng nhập</button></span>
-  <button class="small" id="btnLogout" hidden>Đăng xuất</button>
+  <span id="dbpill" class="pill off">chưa kết nối – lưu trên máy này</span>
+  <span id="whopill" class="pill" hidden></span>
+  <button class="small" id="btnSetup">⚙ Kết nối máy</button>
+  <span id="loginBox" class="login" hidden><input type="email" id="lg_email" placeholder="email tài khoản Firebase" autocomplete="username"><input type="password" id="lg_pass" placeholder="mật khẩu" autocomplete="current-password"><button class="small" id="btnLogin">Kết nối</button><button class="small" id="btnLoginCancel">Huỷ</button></span>
+  <span id="pinBox" class="login" hidden><select id="pin_who"></select><input type="password" id="pin_code" inputmode="numeric" placeholder="PIN" style="width:70px"><button class="small" id="btnPin">Vào</button></span>
+  <button class="small" id="btnWhoOut" hidden>Đổi thợ</button>
+  <button class="small" id="btnLogout" hidden>Gỡ kết nối</button>
   <span id="status" class="st">Sửa thông số bên trái, tích khối trên bản vẽ rồi bấm “Gửi sang CypCut”.</span>
 </header>
 
@@ -176,7 +180,7 @@ canvas{width:100%;display:block;background:var(--panel);border-radius:6px;cursor
     <button id="btnSave">Lưu thông số</button>
     <button id="btnReset">Về mặc định</button>
   </div>
-  <p class="hint">Tích ô ☐ ở đầu mỗi khối trên bản vẽ (không tích = gửi tất cả khối còn lại). File tải về máy xưởng, “cầu nối CypCut” tự nạp vào CypCut. Khối đã gửi chuyển xuống ô “Đã chuyển sang CypCut”.</p>
+  <p class="hint">Tích ô ☐ ở đầu mỗi khối trên bản vẽ (không tích = gửi tất cả khối còn lại). File tải về máy xưởng, “cầu nối CypCut” tự nạp vào CypCut. Khối đã gửi chuyển xuống ô “Đã chuyển sang CypCut”. Máy xưởng: quản lý bấm ⚙ Kết nối máy một lần (tài khoản Firebase như app Quản lý Lương), sau đó thợ chọn tên + PIN như bên Quản lý Lương.</p>
 </div>
 
 <div class="right">
@@ -480,7 +484,7 @@ function renderSent(){
     li.append(t,s); li.onclick=()=>{ sentSel.has(n)?sentSel.delete(n):sentSel.add(n); renderSent(); }; ul.appendChild(li); }
 }
 function fmtStamp(iso){ if (!iso) return ""; const d=new Date(iso); if (isNaN(d)) return iso; const z=n=>String(n).padStart(2,"0"); return `${z(d.getDate())}/${z(d.getMonth()+1)} ${z(d.getHours())}:${z(d.getMinutes())}`; }
-function renderLog(){ const el=$("log"); el.innerHTML=""; for (const l of logs.slice(0,30)){ const d=document.createElement("div"); d.textContent=`${fmtStamp(l.t)} – ${l.files.join(", ")} (${l.blocks.length} khối)`; el.appendChild(d);} if (!logs.length) el.textContent="(chưa gửi file nào)"; }
+function renderLog(){ const el=$("log"); el.innerHTML=""; for (const l of logs.slice(0,30)){ const d=document.createElement("div"); d.textContent=`${fmtStamp(l.t)}${l.by?" · "+l.by:""} – ${l.files.join(", ")} (${l.blocks.length} khối)`; el.appendChild(d);} if (!logs.length) el.textContent="(chưa gửi file nào)"; }
 
 // ---- lưu trữ: Firebase Realtime Database (antam/cauxe) khi đã đăng nhập + localStorage dự phòng
 const FB_KEY="AIzaSyARi7-qaOXfgwVKs-8qD_HKQXyWYkYry8E", FB_DB="https://antamdecor-48b58-default-rtdb.asia-southeast1.firebasedatabase.app", FB_NODE="antam/cauxe";
@@ -500,7 +504,31 @@ async function token(){
 }
 async function fbGet(path){ const t=await token(); if(!t) return null; const r=await fetch(`${FB_DB}/${FB_NODE}/${path}.json?auth=${t}`); if(!r.ok) throw new Error("Firebase từ chối đọc ("+r.status+")"); return r.json(); }
 async function fbPut(path, data){ const t=await token(); if(!t) return; const r=await fetch(`${FB_DB}/${FB_NODE}/${path}.json?auth=${t}`,{method:"PUT",body:JSON.stringify(data)}); if(!r.ok) throw new Error("Firebase từ chối ghi ("+r.status+") – kiểm tra Rules nhánh antam"); }
-function setAuthUI(){ const on=!!auth; $("loginBox").hidden=on; $("btnLogout").hidden=!on; $("dbpill").textContent=on?`dữ liệu dùng chung – ${auth.email}`:"chưa đăng nhập – lưu trên máy này"; $("dbpill").className=on?"pill":"pill off"; }
+let who=lsGet("cauxe_who")||null;   // {id,name} thợ đang dùng máy (đăng nhập bằng PIN như app Quản lý Lương)
+let employees=[];
+function setAuthUI(){
+  const on=!!auth; $("btnLogout").hidden=!on; $("btnSetup").hidden=on||!$("loginBox").hidden;
+  $("dbpill").textContent=on?"máy đã kết nối – dữ liệu dùng chung":"chưa kết nối – lưu trên máy này"; $("dbpill").className=on?"pill":"pill off";
+  $("whopill").hidden=!(on&&who); $("whopill").textContent=who?`Thợ: ${who.name}`:""; $("btnWhoOut").hidden=!(on&&who);
+  $("pinBox").hidden=!(on&&!who&&employees.length);
+}
+async function loadEmployees(){
+  try{
+    const t=await token(); if(!t) return;
+    const r=await fetch(`${FB_DB}/antam/db/employees.json?auth=${t}`); if(!r.ok) return;
+    const v=await r.json(); const arr=Array.isArray(v)?v:Object.values(v||{});
+    employees=arr.filter(e=>e&&e.name&&e.pin&&e.active!==false).map(e=>({id:String(e.id||e.name),name:e.name,pin:String(e.pin)}));
+    const sel=$("pin_who"); sel.innerHTML='<option value="">— chọn thợ —</option>'+employees.map(e=>`<option value="${e.id}">${e.name}</option>`).join("");
+  }catch(e){ console.warn("employees", e); }
+  setAuthUI();
+}
+$("btnSetup").onclick=()=>{ $("loginBox").hidden=false; $("btnSetup").hidden=true; $("lg_email").focus(); };
+$("btnLoginCancel").onclick=()=>{ $("loginBox").hidden=true; setAuthUI(); };
+$("btnPin").onclick=()=>{ const id=$("pin_who").value, pin=$("pin_code").value.trim(); const e=employees.find(x=>x.id===id);
+  if(!e) return toast("Chưa chọn thợ."); if(pin!==e.pin){ $("pin_code").value=""; return toast("Sai PIN."); }
+  who={id:e.id,name:e.name}; lsSet("cauxe_who",who); $("pin_code").value=""; setAuthUI(); toast(`Xin chào ${e.name}.`); };
+$("pin_code").addEventListener("keydown",e=>{ if(e.key==="Enter") $("btnPin").click(); });
+$("btnWhoOut").onclick=()=>{ who=null; lsSet("cauxe_who",null); setAuthUI(); };
 function scheduleSave(){ clearTimeout(saveTimer); saveTimer=setTimeout(saveState, 800); }
 async function saveState(){
   const cfg={}; for (const k of Object.keys(DEFAULTS)) cfg[k]=P[k];
@@ -519,15 +547,15 @@ async function pullRemote(first){
 async function initStore(){
   const cfg=lsGet("cauxe_cfg"); if (cfg){ P={...DEFAULTS, ...cfg}; } sent=lsGet("cauxe_sent")||{}; logs=lsGet("cauxe_log")||[];
   setForm(P); recalc(); renderLog(); setAuthUI();
-  if (auth && await token()){ await pullRemote(true); setInterval(()=>{ if(auth) pullRemote(false); }, 20000); } else { auth=null; setAuthUI(); }
+  if (auth && await token()){ await pullRemote(true); loadEmployees(); setInterval(()=>{ if(auth) pullRemote(false); }, 20000); } else { auth=null; setAuthUI(); }
 }
 async function logExport(entry){
   logs.unshift(entry); logs=logs.slice(0,60); lsSet("cauxe_log", logs); renderLog();
   if (auth && dbReady){ try{ await fbPut("exports/"+entry.t.replace(/[:.]/g,"-"), entry); }catch(e){} }
 }
-$("btnLogin").onclick=async()=>{ try{ $("btnLogin").disabled=true; await login($("lg_email").value.trim(), $("lg_pass").value); $("lg_pass").value=""; setAuthUI(); await pullRemote(true); setInterval(()=>{ if(auth) pullRemote(false); }, 20000); toast("Đã đăng nhập."); }catch(e){ toast("Đăng nhập lỗi: "+e.message); } $("btnLogin").disabled=false; };
+$("btnLogin").onclick=async()=>{ try{ $("btnLogin").disabled=true; await login($("lg_email").value.trim(), $("lg_pass").value); $("lg_pass").value=""; $("loginBox").hidden=true; setAuthUI(); await pullRemote(true); loadEmployees(); setInterval(()=>{ if(auth) pullRemote(false); }, 20000); toast("Máy đã kết nối. Thợ chọn tên + PIN để vào."); }catch(e){ toast("Kết nối lỗi: "+e.message); } $("btnLogin").disabled=false; };
 $("lg_pass").addEventListener("keydown",e=>{ if(e.key==="Enter") $("btnLogin").click(); });
-$("btnLogout").onclick=()=>{ auth=null; lsSet("cauxe_auth",null); dbReady=false; setAuthUI(); toast("Đã đăng xuất – giờ chỉ lưu trên máy này."); };
+$("btnLogout").onclick=()=>{ auth=null; lsSet("cauxe_auth",null); dbReady=false; who=null; lsSet("cauxe_who",null); employees=[]; setAuthUI(); toast("Đã gỡ kết nối – giờ chỉ lưu trên máy này."); };
 
 // ---- tải file (trình duyệt thường: tải thẳng)
 function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("on"); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove("on"), 3500); }
@@ -550,7 +578,7 @@ async function sendChecked(){
     else await saveFile(`cauxe_${base}.zip`, makeZip(files));
     const t=new Date().toISOString();
     for (const g of use){ sent[g.name]=t; checked.delete(g.name); }
-    await logExport({t, files:files.map(f=>f.name.split("/").pop()), blocks:use.map(g=>g.name)});
+    await logExport({t, files:files.map(f=>f.name.split("/").pop()), blocks:use.map(g=>g.name), by: who?who.name:""});
     draw(); renderSent(); saveState();
     $("status").textContent=`Đã tải ${files.length} file (${files.map(f=>KIND_LABEL[f.kind]).join(", ")}; ${use.length} khối). Cầu nối ở máy xưởng sẽ nạp vào CypCut.`;
     toast("Đã tải file – cầu nối CypCut sẽ tự nạp.");
