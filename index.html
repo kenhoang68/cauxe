@@ -1,0 +1,572 @@
+<!-- test -->
+abc<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Cầu Dắt Xe DXF</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: cột trái = thông số (cuộn riêng), cột phải = bản vẽ + bảng cắt + lịch sử; 1 cột khi hẹp */
+:root{
+  --bg:#f6f7f4; --panel:#ffffff; --fg:#1c231d; --muted:#5f6b62; --line:#d7ddd6;
+  --accent:#106030; --accent-fg:#ffffff; --accent-soft:#e3efe6;
+  --warn:#b45309; --warn-soft:#fdf1e0; --hole:#c62828; --small:#1565c0; --sent:#e65100;
+  --font:"Be Vietnam Pro",system-ui,"Segoe UI",sans-serif; --mono:"JetBrains Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#141916; --panel:#1d2420; --fg:#e8ece8; --muted:#9aa89e; --line:#33403a;
+  --accent:#4fa870; --accent-fg:#0d1a10; --accent-soft:#1f3327;
+  --warn:#f0a94a; --warn-soft:#3a2a12; --hole:#ff6b6b; --small:#64a9ff; --sent:#ffa94d; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#141916; --panel:#1d2420; --fg:#e8ece8; --muted:#9aa89e; --line:#33403a;
+  --accent:#4fa870; --accent-fg:#0d1a10; --accent-soft:#1f3327;
+  --warn:#f0a94a; --warn-soft:#3a2a12; --hole:#ff6b6b; --small:#64a9ff; --sent:#ffa94d; color-scheme:dark }
+html,body{height:100%;margin:0}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font-family:var(--font);font-size:13px;line-height:1.4;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:10px}
+header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+header h1{font-size:17px;margin:0;font-weight:700;color:var(--accent)}
+header .st{color:var(--muted);font-size:12px;flex:1;min-width:0}
+.pill{font-size:11px;padding:2px 8px;border-radius:99px;background:var(--accent-soft);color:var(--accent);font-weight:600}
+.pill.off{background:var(--warn-soft);color:var(--warn)}
+.login{display:flex;gap:4px;align-items:center}
+.login input{width:130px;padding:3px 6px;border:1px solid var(--line);border-radius:5px;background:var(--bg);color:var(--fg);font:inherit}
+.wrap{display:grid;grid-template-columns:470px minmax(0,1fr);gap:14px;align-items:start}
+@media (max-width:900px){.wrap{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.left{max-height:calc(100vh - 90px);overflow:auto}
+@media (max-width:900px){.left{max-height:none}}
+h2{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--accent);margin:12px 0 6px;font-weight:700}
+h2:first-child{margin-top:0}
+.row{display:grid;grid-template-columns:minmax(0,auto) 1fr minmax(0,auto) 1fr;gap:4px 8px;align-items:center;margin-bottom:4px}
+.row .chk{white-space:normal}
+.row.two{grid-template-columns:auto 1fr}
+label{color:var(--muted);font-size:12.5px}
+input[type=number],input[type=text],select{font:inherit;font-variant-numeric:tabular-nums;width:100%;min-width:0;padding:3px 6px;border:1px solid var(--line);border-radius:5px;background:var(--bg);color:var(--fg)}
+input[type=number]{width:66px}
+.chk{display:flex;align-items:center;gap:6px;margin:3px 0;color:var(--fg)}
+.chk input{accent-color:var(--accent)}
+.radios{display:flex;gap:10px;flex-wrap:wrap}
+.hint{color:var(--muted);font-size:11.5px;margin:2px 0 6px}
+details{border:1px solid var(--line);border-radius:6px;padding:4px 8px;margin:6px 0}
+summary{cursor:pointer;color:var(--accent);font-weight:600}
+.btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+button{font:inherit;padding:6px 10px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--fg);cursor:pointer}
+button:hover{border-color:var(--accent)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent);font-weight:600}
+button.small{padding:3px 8px;font-size:12px}
+button:disabled{opacity:.5;cursor:default}
+.right{display:flex;flex-direction:column;gap:10px;min-width:0}
+pre{font-family:var(--mono);font-size:11.5px;white-space:pre-wrap;margin:0;color:var(--fg)}
+.warn{background:var(--warn-soft);color:var(--warn);padding:6px 8px;border-radius:6px;font-size:12px}
+canvas{width:100%;display:block;background:var(--panel);border-radius:6px;cursor:pointer}
+.cvwrap{border:1px solid var(--line);border-radius:6px;overflow:auto;max-height:70vh}
+.sent{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start}
+.sent ul{list-style:none;margin:0;padding:0;flex:1;min-width:220px;max-height:160px;overflow:auto;font-size:12px}
+.sent li{padding:3px 6px;border-radius:4px;cursor:pointer;display:flex;gap:6px}
+.sent li.sel{background:var(--accent-soft)}
+.sent li .t{color:var(--muted);font-family:var(--mono);font-size:11px;white-space:nowrap}
+.sent .b{display:flex;flex-direction:column;gap:4px}
+.toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw}
+.toast.on{opacity:1}
+.log{font-size:12px;color:var(--muted);max-height:120px;overflow:auto}
+.log div{padding:2px 0;border-bottom:1px dashed var(--line)}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+</style>
+
+</head>
+<body>
+<header>
+  <h1>Cầu dắt xe gấp gọn – bản vẽ khoan &amp; cắt</h1>
+  <span id="dbpill" class="pill off">chưa đăng nhập – lưu trên máy này</span>
+  <span id="loginBox" class="login"><input type="email" id="lg_email" placeholder="email" autocomplete="username"><input type="password" id="lg_pass" placeholder="mật khẩu" autocomplete="current-password"><button class="small" id="btnLogin">Đăng nhập</button></span>
+  <button class="small" id="btnLogout" hidden>Đăng xuất</button>
+  <span id="status" class="st">Sửa thông số bên trái, tích khối trên bản vẽ rồi bấm “Gửi sang CypCut”.</span>
+</header>
+
+<div class="wrap">
+<div class="panel left" id="left">
+  <h2>Sống dọc (ray dọc)</h2>
+  <div class="row">
+    <label for="doc_td">Tiết diện</label><input type="text" id="doc_td" list="td_doc"><datalist id="td_doc"><option>20x20x2</option><option>20x20x1.5</option><option>25x25x1.5</option><option>20x40x1.5</option></datalist>
+    <label for="doc_qty">Số lượng</label><input type="number" id="doc_qty" step="1" min="1">
+  </div>
+  <div class="row two"><label>Khoan lỗ lên mặt</label>
+    <div class="radios"><label class="chk"><input type="radio" name="doc_face" value="a" id="doc_face_a"><span id="face_a">mặt 20</span></label>
+    <label class="chk"><input type="radio" name="doc_face" value="b" id="doc_face_b"><span id="face_b">mặt 20</span></label><span class="hint">(tay cầm khoan mặt còn lại)</span></div></div>
+  <div class="row">
+    <label for="doc_len">Chiều dài (mm)</label><input type="number" id="doc_len" step="1">
+    <label for="doc_edge">Lỗ đầu cách mép</label><input type="number" id="doc_edge" step="0.1">
+  </div>
+  <div class="row">
+    <label class="chk" style="grid-column:1/3"><input type="checkbox" id="doc_auto">Chia đều lỗ theo chiều dài</label>
+    <label for="doc_pitch">hoặc bước lỗ</label><input type="number" id="doc_pitch" step="0.1">
+  </div>
+  <div class="row">
+    <label for="doc_slot_start">Rãnh khoét: cách đầu</label><input type="number" id="doc_slot_start" step="0.1">
+    <label for="doc_slot_len">dài rãnh (0 = không)</label><input type="number" id="doc_slot_len" step="0.1">
+  </div>
+  <div class="row">
+    <label for="doc_slots">Rãnh thêm</label><input type="text" id="doc_slots" placeholder="500 80; 900 60">
+    <div class="radios" style="grid-column:3/5"><label class="chk"><input type="radio" name="doc_slot_from" value="trai" id="slot_trai">từ đầu trái</label>
+    <label class="chk"><input type="radio" name="doc_slot_from" value="phai" id="slot_phai">từ đuôi (tay cầm)</label></div>
+  </div>
+  <p class="hint">Rãnh rộng = Ø lỗ to, 2 đầu cung tròn (dài đã gồm 2 cung); lỗ to nằm trên rãnh tự bỏ.</p>
+
+  <h2>Sống ngang (thanh ngang)</h2>
+  <div class="row">
+    <label for="ngang_td">Tiết diện</label><input type="text" id="ngang_td" list="td_ng"><datalist id="td_ng"><option>10x10x1.2</option><option>15x15x1.2</option></datalist>
+    <label for="ngang_qty">Số lượng</label><input type="number" id="ngang_qty" step="1" min="1">
+  </div>
+  <div class="row">
+    <label for="ngang_len">Chiều dài (mm)</label><input type="number" id="ngang_len" step="1">
+    <label for="ngang_edge">Lỗ đầu cách mép</label><input type="number" id="ngang_edge" step="0.1">
+  </div>
+  <div class="row">
+    <label class="chk" style="grid-column:1/3"><input type="checkbox" id="ngang_auto">Chia đều lỗ to (= vị trí sống dọc)</label>
+    <label for="ngang_pitch">hoặc bước lỗ</label><input type="number" id="ngang_pitch" step="0.1">
+  </div>
+  <div class="row two"><label for="lo_nho_n">Số lỗ nhỏ giữa 2 lỗ to</label><input type="number" id="lo_nho_n" step="1" min="0" style="width:72px"></div>
+
+  <details id="adv"><summary>Thông số nâng cao (đường kính lỗ, tay cầm, block DXF)</summary>
+    <label class="chk"><input type="checkbox" id="lo_to_auto">Lỗ to tự theo sống ngang: 10x10 → Ø6,5; còn lại Ø6,7</label>
+    <div class="row"><label for="lo_to">Lỗ to Ø</label><input type="number" id="lo_to" step="0.1"><label for="lo_nho_d">Lỗ nhỏ Ø</label><input type="number" id="lo_nho_d" step="0.1"></div>
+    <label class="chk"><input type="checkbox" id="tc_auto">Tay cầm tự theo độ dày sống dọc: dày 2 → Ø3,7; dày 1,5 → Ø3,5; 2 lỗ cách 104</label>
+    <div class="row"><label for="tc_d">Tay cầm: lỗ Ø</label><input type="number" id="tc_d" step="0.1"><label for="tc_gap">2 lỗ cách nhau</label><input type="number" id="tc_gap" step="0.1"></div>
+    <div class="row"><label for="tc_from_end">Cách đuôi</label><input type="number" id="tc_from_end" step="0.1"><label for="tc_face">Khoan mặt</label><select id="tc_face"><option value="canh">canh (cạnh 2)</option><option value="mat">mat (cạnh 1)</option></select></div>
+    <label class="chk"><input type="checkbox" id="dxf_block">DXF: mỗi khối thanh = 1 block – click là chọn cả khối trong CypCut</label>
+  </details>
+
+  <h2>Bản lề (khoét lỗ)</h2>
+  <label class="chk"><input type="checkbox" id="hinge_on">Vẽ bản lề (T168: cánh lớn 41,33 / khớp 15,94 / cánh nhỏ 32,75, dài 69,09)</label>
+  <div class="row two"><label>Lỗ cánh nhỏ Ø6,8 ở</label><div class="radios">
+    <label class="chk"><input type="radio" name="hinge_spos" value="trong" id="sp_trong">sát khớp (4 mm)</label>
+    <label class="chk"><input type="radio" name="hinge_spos" value="giua" id="sp_giua">giữa cánh</label>
+    <label class="chk"><input type="radio" name="hinge_spos" value="ngoai" id="sp_ngoai">sát mép ngoài (4 mm)</label></div></div>
+  <div class="row"><label for="hinge_qty">Số bản lề vẽ (0 = số sống dọc)</label><input type="number" id="hinge_qty" step="1" min="0"><label for="hinge_block">cái/khối</label><input type="number" id="hinge_block" step="1" min="0"></div>
+  <label class="chk"><input type="checkbox" id="hinge_flip">Cắt ÚP: khớp quay xuống, lọt khe thanh bàn cắt (bản vẽ tự lật gương)</label>
+  <details><summary>Kích thước bản lề &amp; lỗ khoét</summary>
+    <div class="row"><label for="hinge_B">Cánh lớn B</label><input type="number" id="hinge_B" step="0.01"><label for="hinge_C">Khớp C</label><input type="number" id="hinge_C" step="0.01"></div>
+    <div class="row"><label for="hinge_D">Cánh nhỏ D</label><input type="number" id="hinge_D" step="0.01"><label for="hinge_L">Dài theo trục L</label><input type="number" id="hinge_L" step="0.01"></div>
+    <div class="row"><label for="hinge_cham">Vát góc cánh lớn</label><input type="number" id="hinge_cham" step="0.1"><label for="hinge_bd">Lỗ cánh lớn Ø</label><input type="number" id="hinge_bd" step="0.1"></div>
+    <div class="row"><label for="hinge_bedge">Mép cánh → mép lỗ</label><input type="number" id="hinge_bedge" step="0.01"><label for="hinge_bgap">Tâm cách tâm</label><input type="number" id="hinge_bgap" step="0.1"></div>
+    <div class="row"><label for="hinge_bx">hoặc tâm cách mép (0 = dùng số trên)</label><input type="number" id="hinge_bx" step="0.01"><label for="hinge_bfrac">tỉ lệ đường chia (nếu 2 ô = 0)</label><input type="number" id="hinge_bfrac" step="0.01"></div>
+    <div class="row"><label for="hinge_sd">Lỗ cánh nhỏ Ø</label><input type="number" id="hinge_sd" step="0.1"><label for="hinge_sedge">mép lỗ cách mép</label><input type="number" id="hinge_sedge" step="0.1"></div>
+  </details>
+
+  <h2>Cách vẽ (ghép thanh để cắt / khoan một lượt)</h2>
+  <div class="row"><label for="doc_block">Sống dọc: thanh/khối</label><input type="number" id="doc_block" step="1" min="0"><label for="ngang_block">Sống ngang: thanh/khối</label><input type="number" id="ngang_block" step="1" min="0"></div>
+  <p class="hint">0 = ghép tất cả thành 1 khối, 1 = vẽ từng thanh đơn lẻ, N = mỗi khối N thanh. Thanh ghép sát (khe 0) chỉ vẽ 1 đường bao ngoài.</p>
+  <label class="chk"><input type="checkbox" id="vach">Vẽ vạch mảnh giữa các thanh (layer VACH)</label>
+  <div class="row"><label for="row_gap">Khe giữa thanh</label><input type="number" id="row_gap" step="0.1" min="0"><label for="group_gap">Cách giữa các khối</label><input type="number" id="group_gap" step="1"></div>
+  <div class="row two"><label for="qty_cau">Số cầu (bảng cắt)</label><input type="number" id="qty_cau" step="1" min="1" style="width:72px"></div>
+
+  <div class="btns">
+    <button class="primary" id="btnSend">⚡ Gửi khối ĐÃ TÍCH sang CypCut</button>
+    <button id="btnAll">Tích tất cả</button><button id="btnNone">Bỏ tích</button>
+  </div>
+  <div class="btns">
+    <button id="btnExportAll">💾 Tải đủ 4 file DXF + bảng cắt</button>
+    <button id="btnSave">Lưu thông số</button>
+    <button id="btnReset">Về mặc định</button>
+  </div>
+  <p class="hint">Tích ô ☐ ở đầu mỗi khối trên bản vẽ (không tích = gửi tất cả khối còn lại). File tải về máy xưởng, “cầu nối CypCut” tự nạp vào CypCut. Khối đã gửi chuyển xuống ô “Đã chuyển sang CypCut”.</p>
+</div>
+
+<div class="right">
+  <div class="panel"><pre id="cut"></pre><div id="warn" class="warn" hidden></div></div>
+  <div class="panel">
+    <div class="cvwrap"><canvas id="cv" width="800" height="400"></canvas></div>
+  </div>
+  <div class="panel">
+    <h2>✔ Đã chuyển sang CypCut (đã cắt)</h2>
+    <div class="sent"><ul id="sentList"></ul>
+      <div class="b"><button class="small" id="btnRestoreSel">↩ Hoàn lại khối chọn</button><button class="small" id="btnRestoreAll">↩ Hoàn lại tất cả</button></div></div>
+  </div>
+  <div class="panel"><h2>Lịch sử gửi file</h2><div id="log" class="log"></div></div>
+</div>
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+'use strict';
+// ====================================================================== mặc định (giống app Windows, _v = 9)
+const DEFAULTS = {
+  doc_td:"20x20x1.5", doc_len:1200, doc_qty:2, doc_edge:8, doc_auto:true, doc_pitch:0,
+  doc_face:"a", doc_slots:"", doc_slot_from:"trai", doc_slot_start:0, doc_slot_len:0,
+  ngang_td:"15x15x1.2", ngang_len:650, ngang_qty:14, ngang_edge:8, ngang_auto:true, ngang_pitch:0,
+  lo_to:6.7, lo_nho_n:3, lo_nho_d:3.2,
+  tc_auto:true, tc_d:3.5, tc_from_end:30, tc_gap:104, tc_face:"canh", lo_to_auto:true,
+  hinge_on:true, hinge_block:0, hinge_qty:1,
+  hinge_B:41.33, hinge_C:15.94, hinge_D:32.75, hinge_L:69.09, hinge_cham:8,
+  hinge_bd:8.7, hinge_bedge:14.72, hinge_bfrac:0.4, hinge_bx:0, hinge_bgap:30,
+  hinge_sd:6.8, hinge_spos:"giua", hinge_sedge:4, hinge_flip:false,
+  dxf_block:true, row_gap:0, group_gap:40, qty_cau:1, doc_block:0, ngang_block:0, vach:false,
+};
+const STR_KEYS = new Set(["doc_td","ngang_td","tc_face","doc_face","hinge_spos","doc_slots","doc_slot_from"]);
+const RADIO_KEYS = {doc_face:"doc_face", doc_slot_from:"doc_slot_from", hinge_spos:"hinge_spos"};
+const KIND_FILE = {doc:"songdoc", ngang:"songngang", hinge:"banle", taycam:"taycam"};
+const KIND_LABEL = {doc:"sống dọc", ngang:"sống ngang", hinge:"bản lề", taycam:"tay cầm"};
+
+// ====================================================================== tính toán (port từ cauxe.py)
+function parseTd(s){
+  const parts = String(s).toLowerCase().replace(/\*/g,"x").split("x").map(t=>t.trim().replace(",",".")).filter(Boolean);
+  const a = parseFloat(parts[0]); if (!isFinite(a)) throw new Error(`Tiết diện '${s}' không hợp lệ (dạng 20x20x1.5).`);
+  const b = parts.length>1 ? parseFloat(parts[1]) : a; const t = parts.length>2 ? parseFloat(parts[2]) : 1.5;
+  return [a, isFinite(b)?b:a, isFinite(t)?t:1.5];
+}
+function positions(length, n, edge, auto, pitch){
+  if (n<=0) return []; if (n===1) return [length/2];
+  if (auto || pitch<=0){ const step=(length-2*edge)/(n-1); return Array.from({length:n},(_,i)=>edge+i*step); }
+  const start=(length-pitch*(n-1))/2; return Array.from({length:n},(_,i)=>start+i*pitch);
+}
+function splitBlocks(total, per){ per=Math.trunc(per||0); if (per<=0||per>=total) return [total]; const out=[]; let left=total; while(left>0){out.push(Math.min(per,left)); left-=per;} return out; }
+function makeBlocks(base, total, per, length, face, gap, rowHoles){
+  const sizes=splitBlocks(total, per); return sizes.map((rows,bi)=>{
+    const name = base + (sizes.length>1 ? `  [khối ${bi+1}/${sizes.length}: ${rows} thanh]` : (rows>1 ? `  [${rows} thanh ghép]` : "  [1 thanh]"));
+    const g={name, rows, length, face, holes:[]};
+    for (let r=0;r<rows;r++){ const y=r*(face+gap)+face/2; g.holes.push(...rowHoles(y)); }
+    g.height=rows*face+(rows-1)*gap; return g; });
+}
+const tcAutoSpec = t => [t>=1.9?3.7:3.5, 104];
+const loToAutoSpec = td => { const [a,b]=parseTd(td); return Math.max(a,b)<=10.01 ? 6.5 : 6.7; };
+function parseSlots(text){ const out=[]; for (const line of String(text||"").replace(/;/g,"\n").split("\n")){ const p=line.replace(/,/g," ").split(/\s+/).filter(Boolean); if (p.length>=2){ const a=parseFloat(p[0]), b=parseFloat(p[1]); if (isFinite(a)&&isFinite(b)&&b>0) out.push([a,b]); } } return out; }
+const fmt = v => (Math.round(v*100)/100).toString().replace(/\.0+$/,"");
+
+function compute(p){
+  let [da, db, dt] = parseTd(p.doc_td);
+  if (p.doc_face==="b") [da,db]=[db,da];
+  if (p.tc_auto) [p.tc_d, p.tc_gap] = tcAutoSpec(dt);
+  const [na] = parseTd(p.ngang_td);
+  const L=+p.doc_len, W=+p.ngang_len, nd=Math.trunc(p.doc_qty), nn=Math.trunc(p.ngang_qty);
+  if (nd<1||nn<1) throw new Error("Số lượng sống dọc / sống ngang phải ≥ 1.");
+  if (p.lo_to_auto) p.lo_to = loToAutoSpec(p.ngang_td);
+  const big=+p.lo_to, gap=+p.row_gap||0;
+  // sống dọc
+  const xsDoc = positions(L, nn, +p.doc_edge, p.doc_auto, +p.doc_pitch||0);
+  const slots=[]; const pairs=parseSlots(p.doc_slots);
+  if ((+p.doc_slot_len||0)>0) pairs.unshift([+p.doc_slot_start||0, +p.doc_slot_len]);
+  for (let [st, ln] of pairs){ ln=Math.min(ln,L); let x0 = p.doc_slot_from==="phai" ? (L-st-ln) : st; x0=Math.max(0,Math.min(x0,L-ln)); slots.push([x0,x0+ln]); }
+  slots.sort((a,b)=>a[0]-b[0]);
+  const docRow = y => xsDoc.filter(x=>!slots.some(([x0,x1])=>x-big/2<x1 && x+big/2>x0)).map(x=>[x,y,big]);
+  const docBlocks = makeBlocks(`Sống dọc ${p.doc_td} – dài ${fmt(L)} mm × ${nd}`+(slots.length?` + ${slots.length} rãnh`:""), nd, p.doc_block, L, da, gap, docRow);
+  if (slots.length) for (const g of docBlocks){ g.slots=[]; for (let r=0;r<g.rows;r++) for (const [x0,x1] of slots) g.slots.push([x0,x1,r*(da+gap)+da/2,big]); }
+  p._doc_slots=slots;
+  // sống ngang
+  const xsNg = positions(W, nd, +p.ngang_edge, p.ngang_auto, +p.ngang_pitch||0);
+  const k=Math.trunc(p.lo_nho_n), small=+p.lo_nho_d;
+  const ngRow = y => { const hs=xsNg.map(x=>[x,y,big]); if (k>0&&small>0) for (let i=0;i<xsNg.length-1;i++){ const x0=xsNg[i],x1=xsNg[i+1]; for (let j=1;j<=k;j++) hs.push([x0+(x1-x0)*j/(k+1),y,small]); } return hs; };
+  const ngBlocks = makeBlocks(`Sống ngang ${p.ngang_td} – dài ${fmt(W)} mm × ${nn}`, nn, p.ngang_block, W, na, gap, ngRow);
+  // tay cầm
+  const faceTc = p.tc_face==="canh" ? db : da; const tcd=+p.tc_d, c=+p.tc_from_end, e=+p.tc_gap;
+  const gTc = makeBlocks(`Tay cầm – 2 sống dọc ngoài, mặt bên ${fmt(faceTc)} mm, 2 lỗ Ø${fmt(tcd)} cách đuôi ${fmt(c)} & ${fmt(c+e)}`, 2, 0, L, faceTc, gap, y=>[[L-c,y,tcd],[L-c-e,y,tcd]])[0];
+  // bản lề
+  let hingeBlocks=[]; p._hinge_warn="";
+  if (p.hinge_on){
+    const B=+p.hinge_B, C=+p.hinge_C, D=+p.hinge_D, HL=+p.hinge_L, cham=+p.hinge_cham, hw=B+C+D;
+    const bd=+p.hinge_bd, bgap=+p.hinge_bgap; let bx=+p.hinge_bx||0; const bedge=+p.hinge_bedge||0;
+    if (bx<=0 && bedge>0) bx=bedge+bd/2; else if (bx<=0) bx=B*(+p.hinge_bfrac||0.4);
+    p._hinge_bx=bx;
+    const sd=+p.hinge_sd, sedge=+p.hinge_sedge, spos=p.hinge_spos;
+    const sx = spos==="trong" ? B+C+sedge+sd/2 : spos==="ngoai" ? hw-sedge-sd/2 : B+C+D/2;
+    const holes=[[bx,HL/2-bgap/2,bd],[bx,HL/2+bgap/2,bd],[sx,HL/2,sd]];
+    const gapK=Math.min(Math.abs(sx-(B+C))-sd/2, Math.abs(bx-B)-bd/2);
+    if (gapK<8) p._hinge_warn=`⚠ Lỗ bản lề chỉ cách mép khớp ${gapK.toFixed(1)} mm – khớp nhô cao, đầu cắt laser dễ vướng/đo cao sai. Nên ≥ 8 mm (tâm ≥ 12 mm) hoặc đặt bản lề cho khớp thụt xuống khe thanh bàn cắt.`;
+    const nh = Math.trunc(+p.hinge_qty||0) || nd;
+    const sposTxt = {trong:"sát khớp", ngoai:"sát mép ngoài"}[spos] || "giữa cánh";
+    hingeBlocks = makeBlocks(`Bản lề ${hw.toFixed(1)}×${fmt(HL)} – 2 lỗ Ø${fmt(bd)} cánh lớn + 1 lỗ Ø${fmt(sd)} cánh nhỏ (${sposTxt}) × ${nh}`, nh, p.hinge_block, hw, HL, gap,
+      y => holes.map(([x,hy,d])=>[x,y-HL/2+hy,d]));
+    let outline=[[cham,0],[hw,0],[hw,HL],[cham,HL],[0,HL-cham],[0,cham]];
+    let lines = p.vach ? [[[B,0],[B,HL]],[[B+C,0],[B+C,HL]]] : [];
+    if (p.hinge_flip){ outline=outline.map(([x,y])=>[hw-x,y]); lines=lines.map(([[x1,y1],[x2,y2]])=>[[hw-x1,y1],[hw-x2,y2]]); }
+    for (const g of hingeBlocks){ g.hinge=true; g.outline=outline; g.lines=lines; if (p.hinge_flip){ g.holes=g.holes.map(([x,y,d])=>[hw-x,y,d]); g.name+="  [CẮT ÚP – lật gương]"; } }
+  }
+  for (const [lst,kind] of [[docBlocks,"doc"],[ngBlocks,"ngang"],[hingeBlocks,"hinge"],[[gTc],"taycam"]]) for (const g of lst) g.kind=kind;
+  docBlocks[0].pitch = nn>1 ? xsDoc[1]-xsDoc[0] : 0; ngBlocks[0].pitch = nd>1 ? xsNg[1]-xsNg[0] : 0;
+  return {doc:docBlocks[0], ngang:ngBlocks[0], taycam:gTc, groups:[...ngBlocks,...docBlocks,...hingeBlocks], row_gap:gap, vach:!!p.vach};
+}
+
+function cutListText(p, res){
+  const q=Math.trunc(p.qty_cau)||1, nd=Math.trunc(p.doc_qty), nn=Math.trunc(p.ngang_qty);
+  const L=[`CẦU DẮT XE GẤP GỌN – bảng cắt hộp (${q} chiếc)`, "=".repeat(48),
+    `Sống dọc : hộp ${p.doc_td}  dài ${fmt(p.doc_len)} mm  × ${nd}/chiếc  → ${nd*q} thanh`,
+    `           ${nn} lỗ Ø${fmt(p.lo_to)}, lỗ đầu cách mép ${fmt(p.doc_edge)}, bước ${res.doc.pitch.toFixed(1)} mm` +
+      (p._doc_slots||[]).map(([x0,x1])=>`\n           rãnh rộng ${fmt(p.lo_to)}: từ ${fmt(x0)} đến ${fmt(x1)} mm (dài ${fmt(x1-x0)}, 2 đầu cung tròn)`).join(""),
+    `Sống ngang: hộp ${p.ngang_td}  dài ${fmt(p.ngang_len)} mm  × ${nn}/chiếc  → ${nn*q} thanh`,
+    `           ${nd} lỗ Ø${fmt(p.lo_to)} (bước ${res.ngang.pitch.toFixed(1)} mm, lỗ đầu cách mép ${fmt(p.ngang_edge)}) + ${Math.trunc(p.lo_nho_n)} lỗ Ø${fmt(p.lo_nho_d)} giữa mỗi 2 lỗ to`,
+    `Tay cầm   : 2 lỗ Ø${fmt(p.tc_d)} mặt bên 2 sống dọc ngoài, cách đuôi ${fmt(p.tc_from_end)} và ${fmt(+p.tc_from_end + +p.tc_gap)} mm`,
+    p.hinge_on ? `Bản lề    : ${nd} cái/chiếc → ${nd*q} cái (bản vẽ: ${Math.trunc(+p.hinge_qty)||nd} cái, CypCut nhân bản thêm); 2 lỗ Ø${fmt(p.hinge_bd)} cánh lớn (tâm cách tâm ${fmt(p.hinge_bgap)}, tâm cách mép ngoài ${(+p._hinge_bx).toFixed(2)}, mép lỗ cách mép ${(+p._hinge_bx - p.hinge_bd/2).toFixed(2)}) + 1 lỗ Ø${fmt(p.hinge_sd)} cánh nhỏ (${({trong:"sát khớp",ngoai:"sát mép ngoài"})[p.hinge_spos]||"giữa cánh"}, canh giữa chiều dài)` : "Bản lề    : (không vẽ)",
+    "", `Tổng chiều dài hộp ${p.doc_td}: ${(p.doc_len*nd*q/1000).toFixed(2)} m`, `Tổng chiều dài hộp ${p.ngang_td}: ${(p.ngang_len*nn*q/1000).toFixed(2)} m`];
+  return L.join("\n");
+}
+
+// ====================================================================== ghi DXF (R12 – CypCut/AutoCAD đọc được)
+function DxfWriter(){
+  const out=[]; const w=(code,val)=>{out.push(String(code)); out.push(String(val));};
+  const num = v => (Math.round(v*10000)/10000).toString();
+  this.layers=[]; this.blocks=[]; this.ents=[];
+  const ent = (arr, lines)=>arr.push(lines);
+  const circle=(arr,x,y,r,layer)=>ent(arr,["0","CIRCLE","8",layer,"10",num(x),"20",num(y),"30","0","40",num(r)]);
+  const line=(arr,x1,y1,x2,y2,layer)=>ent(arr,["0","LINE","8",layer,"10",num(x1),"20",num(y1),"30","0","11",num(x2),"21",num(y2),"31","0"]);
+  const poly=(arr,pts,layer,closed)=>{ const l=["0","POLYLINE","8",layer,"66","1","70",closed?"1":"0","10","0","20","0","30","0"];
+    for (const [x,y,b] of pts){ l.push("0","VERTEX","8",layer,"10",num(x),"20",num(y),"30","0"); if (b) l.push("42",num(b)); }
+    l.push("0","SEQEND","8",layer); ent(arr,l); };
+  // R12 chỉ nhận ASCII: bỏ dấu tiếng Việt, thay ký hiệu
+  const ascii = s => String(s).replace(/×/g,"x").replace(/Ø/g,"D").replace(/[–—]/g,"-").replace(/đ/g,"d").replace(/Đ/g,"D").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^\x20-\x7e]/g,"?");
+  const text=(arr,x,y,h,s,layer)=>ent(arr,["0","TEXT","8",layer,"10",num(x),"20",num(y),"30","0","40",num(h),"1",ascii(s)]);
+  const insert=(arr,name,x,y,layer)=>ent(arr,["0","INSERT","8",layer,"2",name,"10",num(x),"20",num(y),"30","0"]);
+  this.api={circle,line,poly,text,insert};
+  this.toString=function(){
+    w(0,"SECTION"); w(2,"HEADER"); w(9,"$ACADVER"); w(1,"AC1009"); w(0,"ENDSEC");
+    w(0,"SECTION"); w(2,"TABLES");
+    w(0,"TABLE"); w(2,"LTYPE"); w(70,1); w(0,"LTYPE"); w(2,"CONTINUOUS"); w(70,64); w(3,"Solid line"); w(72,65); w(73,0); w(40,"0.0"); w(0,"ENDTAB");
+    w(0,"TABLE"); w(2,"LAYER"); w(70,this.layers.length+1); w(0,"LAYER"); w(2,"0"); w(70,0); w(62,7); w(6,"CONTINUOUS");
+    for (const [n,c] of this.layers){ w(0,"LAYER"); w(2,n); w(70,0); w(62,c); w(6,"CONTINUOUS"); }
+    w(0,"ENDTAB"); w(0,"ENDSEC");
+    w(0,"SECTION"); w(2,"BLOCKS");
+    for (const b of this.blocks){ w(0,"BLOCK"); w(8,"0"); w(2,b.name); w(70,0); w(10,0); w(20,0); w(30,0); w(3,b.name); for (const e of b.ents) out.push(...e); w(0,"ENDBLK"); w(8,"0"); }
+    w(0,"ENDSEC");
+    w(0,"SECTION"); w(2,"ENTITIES"); for (const e of this.ents) out.push(...e); w(0,"ENDSEC"); w(0,"EOF");
+    return out.join("\r\n")+"\r\n";
+  };
+}
+function drawGroup(dxf, arr, g, ox, oy, gap, vach, label){
+  const {circle,line,poly,text}=dxf.api; const L=g.length, H=g.height;
+  if (g.outline){
+    for (let r=0;r<g.rows;r++){ const y0=oy+r*(g.face+gap);
+      poly(arr, g.outline.map(([x,y])=>[ox+x,y0+y,0]), "VIEN", true);
+      for (const [[x1,y1],[x2,y2]] of (g.lines||[])) line(arr,ox+x1,y0+y1,ox+x2,y0+y2,"VACH"); }
+  } else if (gap>0 && g.rows>1){
+    for (let r=0;r<g.rows;r++){ const y0=oy+r*(g.face+gap); poly(arr,[[ox,y0,0],[ox+L,y0,0],[ox+L,y0+g.face,0],[ox,y0+g.face,0]],"VIEN",true); }
+  } else {
+    poly(arr,[[ox,oy,0],[ox+L,oy,0],[ox+L,oy+H,0],[ox,oy+H,0]],"VIEN",true);
+    if (vach) for (let r=1;r<g.rows;r++){ const y=oy+r*g.face; line(arr,ox,y,ox+L,y,"VACH"); }
+  }
+  for (const [x,y,d] of g.holes) circle(arr,ox+x,oy+y,d/2,d>=5?"LO_TO":"LO_NHO");
+  for (const [x0,x1,y,wd] of (g.slots||[])){ const rr=wd/2, a=ox+x0+rr, b=ox+x1-rr, cy=oy+y;
+    poly(arr,[[a,cy-rr,0],[b,cy-rr,1],[b,cy+rr,0],[a,cy+rr,1]],"LO_TO",true); }
+  if (label) text(arr, ox, oy+H+4, 6, g.name, "NHAN");
+}
+function exportGroups(groups, rowGap, vach, groupGap, asBlock){
+  const dxf=new DxfWriter(); dxf.layers=[["VIEN",7],["VACH",8],["LO_TO",1],["LO_NHO",5],["NHAN",3]];
+  groups.forEach((_,i)=>dxf.layers.push([`KHOI_${String(i+1).padStart(2,"0")}`,7]));
+  let y=0; groups.forEach((g,i)=>{ const bn=`KHOI_${String(i+1).padStart(2,"0")}`;
+    if (asBlock){ const b={name:bn,ents:[]}; drawGroup(dxf,b.ents,g,0,0,rowGap,vach,false); dxf.blocks.push(b); dxf.api.insert(dxf.ents,bn,0,y,bn); dxf.api.text(dxf.ents,0,y+g.height+4,6,g.name,"NHAN"); }
+    else drawGroup(dxf,dxf.ents,g,0,y,rowGap,vach,true);
+    y+=g.height+groupGap; });
+  return dxf.toString();
+}
+function exportByKind(groups, base, rowGap, vach, groupGap, asBlock){
+  const out=[]; for (const kind of ["doc","ngang","hinge","taycam"]){ const gs=groups.filter(g=>g.kind===kind); if (!gs.length) continue;
+    out.push({kind, name:`${base}_${KIND_FILE[kind]}.dxf`, data:exportGroups(gs,rowGap,vach,groupGap,asBlock), blocks:gs.map(g=>g.name)}); }
+  return out;
+}
+// ---- zip (store, không nén) để tải 1 lần nhiều file
+const CRC_T=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t;})();
+function crc32(u8){let c=0xFFFFFFFF;for(let i=0;i<u8.length;i++)c=CRC_T[(c^u8[i])&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0;}
+function makeZip(files){ // files: [{name, data(string)}]
+  const enc=new TextEncoder(); const parts=[]; const cd=[]; let off=0;
+  const d=new Date(); const dosT=((d.getHours()<<11)|(d.getMinutes()<<5)|(d.getSeconds()>>1))&0xFFFF, dosD=(((d.getFullYear()-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate())&0xFFFF;
+  const le=(n,b)=>{const a=new Uint8Array(b);for(let i=0;i<b;i++)a[i]=(n>>>(8*i))&255;return a;};
+  for (const f of files){ const nm=enc.encode(f.name), dt=enc.encode(f.data), crc=crc32(dt);
+    const lh=[le(0x04034b50,4),le(20,2),le(0x800,2),le(0,2),le(dosT,2),le(dosD,2),le(crc,4),le(dt.length,4),le(dt.length,4),le(nm.length,2),le(0,2),nm,dt];
+    const ch=[le(0x02014b50,4),le(20,2),le(20,2),le(0x800,2),le(0,2),le(dosT,2),le(dosD,2),le(crc,4),le(dt.length,4),le(dt.length,4),le(nm.length,2),le(0,2),le(0,2),le(0,2),le(0,2),le(0,4),le(off,4),nm];
+    for (const x of lh){parts.push(x); off+=x.length;} cd.push(...ch); }
+  const cdStart=off; let cdLen=0; for (const x of cd){parts.push(x); cdLen+=x.length;}
+  parts.push(le(0x06054b50,4),le(0,2),le(0,2),le(files.length,2),le(files.length,2),le(cdLen,4),le(cdStart,4),le(0,2));
+  return new Blob(parts,{type:"application/zip"});
+}
+
+// ====================================================================== giao diện
+const $=id=>document.getElementById(id);
+let P={...DEFAULTS}, RES=null, checked=new Set(), sent={}, sentSel=new Set(), logs=[];
+let dbReady=false, saveTimer=null;
+
+function setForm(p){
+  for (const k of Object.keys(DEFAULTS)){
+    if (RADIO_KEYS[k]){ const el=document.querySelector(`input[name=${k}][value="${p[k]}"]`); if (el) el.checked=true; continue; }
+    const el=$(k); if (!el) continue;
+    if (el.type==="checkbox") el.checked=!!p[k]; else el.value=p[k];
+  }
+}
+function readForm(){
+  const p={};
+  for (const k of Object.keys(DEFAULTS)){
+    if (RADIO_KEYS[k]){ const el=document.querySelector(`input[name=${k}]:checked`); p[k]=el?el.value:DEFAULTS[k]; continue; }
+    const el=$(k); if (!el){ p[k]=DEFAULTS[k]; continue; }
+    if (el.type==="checkbox") p[k]=el.checked; else if (STR_KEYS.has(k)) p[k]=el.value.trim(); else { const v=parseFloat(String(el.value).replace(",",".")); p[k]=isFinite(v)?v:0; }
+  }
+  return p;
+}
+function recalc(){
+  try{
+    P=readForm(); RES=compute(P);
+    try{ const [a,b]=parseTd(P.doc_td); $("face_a").textContent=`mặt ${fmt(a)} mm`; $("face_b").textContent=`mặt ${fmt(b)} mm`; }catch(e){}
+    if (P.lo_to_auto) $("lo_to").value=P.lo_to; if (P.tc_auto){ $("tc_d").value=P.tc_d; $("tc_gap").value=P.tc_gap; }
+    $("cut").textContent=cutListText(P,RES);
+    $("warn").hidden=!P._hinge_warn; $("warn").textContent=P._hinge_warn||"";
+  }catch(e){ RES=null; $("cut").textContent="⚠ "+e.message; }
+  draw(); renderSent(); scheduleSave();
+}
+// ---- bản vẽ
+const cv=$("cv"); const cvItems=[];
+function draw(){
+  const ctx=cv.getContext("2d"); const cs=getComputedStyle(document.documentElement);
+  const col=n=>cs.getPropertyValue(n).trim();
+  const Wpx=Math.max(600, cv.parentElement.clientWidth-2);
+  cvItems.length=0;
+  if (!RES){ cv.width=Wpx; cv.height=120; ctx.clearRect(0,0,cv.width,cv.height); return; }
+  const all=[...RES.groups, RES.taycam]; const avail=all.filter(g=>!sent[g.name]);
+  const LBL=22, PAD=14, ggap=18;
+  const maxL=Math.max(...all.map(g=>g.length), 1);
+  const sc=(Wpx-2*PAD)/maxL;
+  let total=PAD; for (const g of avail) total+=LBL+g.height*sc+ggap;
+  cv.width=Wpx; cv.height=Math.max(120, total+PAD);
+  ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.font="600 12px "+col("--font"); ctx.lineWidth=1;
+  let y=PAD;
+  for (const g of avail){
+    const on=checked.has(g.name); const ox=PAD, oy=y+LBL;
+    ctx.strokeStyle=col("--fg"); ctx.fillStyle=on?col("--sent"):col("--panel");
+    ctx.beginPath(); ctx.rect(ox,y+4,12,12); ctx.fill(); ctx.stroke();
+    if (on){ ctx.fillStyle=col("--panel"); ctx.font="bold 10px sans-serif"; ctx.fillText("✔",ox+2,y+14); ctx.font="600 12px "+col("--font"); }
+    ctx.fillStyle=on?col("--sent"):col("--accent"); ctx.fillText(g.name, ox+18, y+15);
+    cvItems.push({name:g.name, x:ox, y:y, w:Wpx, h:LBL+g.height*sc});
+    const gp=RES.row_gap; const X0=ox, X1=ox+g.length*sc;
+    ctx.strokeStyle=col("--fg");
+    if (g.outline){
+      for (let r=0;r<g.rows;r++){ const yb=oy+r*(g.face+gp)*sc; ctx.beginPath(); g.outline.forEach(([px,py],i)=>{ const X=ox+px*sc, Y=yb+(g.face-py)*sc; i?ctx.lineTo(X,Y):ctx.moveTo(X,Y); }); ctx.closePath(); ctx.stroke();
+        ctx.save(); ctx.strokeStyle=col("--muted"); ctx.setLineDash([3,2]); for (const [[x1,y1],[x2,y2]] of (g.lines||[])){ ctx.beginPath(); ctx.moveTo(ox+x1*sc,yb+(g.face-y1)*sc); ctx.lineTo(ox+x2*sc,yb+(g.face-y2)*sc); ctx.stroke(); } ctx.restore(); }
+    } else if (gp>0 && g.rows>1){
+      for (let r=0;r<g.rows;r++){ const yb=oy+r*(g.face+gp)*sc; ctx.strokeRect(X0,yb,g.length*sc,g.face*sc); }
+    } else {
+      ctx.strokeRect(X0,oy,g.length*sc,g.height*sc);
+      if (RES.vach){ ctx.save(); ctx.strokeStyle=col("--line"); ctx.setLineDash([2,2]); for (let r=1;r<g.rows;r++){ const yy=oy+r*g.face*sc; ctx.beginPath(); ctx.moveTo(X0,yy); ctx.lineTo(X1,yy); ctx.stroke(); } ctx.restore(); }
+    }
+    // lỗ: y trong khối tính từ dưới lên -> canvas từ trên xuống
+    for (const [x,hy,d] of g.holes){ const rr=Math.max(d/2*sc,1.5); ctx.strokeStyle=d>=5?col("--hole"):col("--small"); ctx.beginPath(); ctx.arc(ox+x*sc, oy+(g.height-hy)*sc, rr, 0, Math.PI*2); ctx.stroke(); }
+    for (const [x0,x1,hy,wd] of (g.slots||[])){ const rr=Math.max(wd/2*sc,1.5), cy=oy+(g.height-hy)*sc, a=ox+x0*sc+rr, b=ox+x1*sc-rr; ctx.strokeStyle=col("--hole"); ctx.beginPath(); ctx.moveTo(a,cy-rr); ctx.lineTo(b,cy-rr); ctx.arc(b,cy,rr,-Math.PI/2,Math.PI/2); ctx.lineTo(a,cy+rr); ctx.arc(a,cy,rr,Math.PI/2,Math.PI*1.5); ctx.closePath(); ctx.stroke(); }
+    y+=LBL+g.height*sc+ggap;
+  }
+  if (!avail.length){ ctx.fillStyle=col("--muted"); ctx.fillText("Tất cả khối đã chuyển sang CypCut. Bấm ↩ Hoàn lại nếu cần.", PAD, 40); }
+}
+cv.addEventListener("click", e=>{ const r=cv.getBoundingClientRect(); const x=(e.clientX-r.left)*cv.width/r.width, y=(e.clientY-r.top)*cv.height/r.height;
+  for (const it of cvItems) if (x>=it.x && y>=it.y && y<it.y+it.h){ checked.has(it.name)?checked.delete(it.name):checked.add(it.name); draw(); return; } });
+window.addEventListener("resize", draw);
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw);
+
+// ---- đã gửi
+function renderSent(){
+  const ul=$("sentList"); ul.innerHTML="";
+  const names=Object.keys(sent).sort((a,b)=>(sent[b]||"").localeCompare(sent[a]||""));
+  if (!names.length){ const li=document.createElement("li"); li.textContent="(chưa có khối nào)"; li.style.color="var(--muted)"; ul.appendChild(li); return; }
+  for (const n of names){ const li=document.createElement("li"); if (sentSel.has(n)) li.classList.add("sel");
+    const t=document.createElement("span"); t.className="t"; t.textContent=fmtStamp(sent[n]); const s=document.createElement("span"); s.textContent=n;
+    li.append(t,s); li.onclick=()=>{ sentSel.has(n)?sentSel.delete(n):sentSel.add(n); renderSent(); }; ul.appendChild(li); }
+}
+function fmtStamp(iso){ if (!iso) return ""; const d=new Date(iso); if (isNaN(d)) return iso; const z=n=>String(n).padStart(2,"0"); return `${z(d.getDate())}/${z(d.getMonth()+1)} ${z(d.getHours())}:${z(d.getMinutes())}`; }
+function renderLog(){ const el=$("log"); el.innerHTML=""; for (const l of logs.slice(0,30)){ const d=document.createElement("div"); d.textContent=`${fmtStamp(l.t)} – ${l.files.join(", ")} (${l.blocks.length} khối)`; el.appendChild(d);} if (!logs.length) el.textContent="(chưa gửi file nào)"; }
+
+// ---- lưu trữ: Firebase Realtime Database (antam/cauxe) khi đã đăng nhập + localStorage dự phòng
+const FB_KEY="AIzaSyARi7-qaOXfgwVKs-8qD_HKQXyWYkYry8E", FB_DB="https://antamdecor-48b58-default-rtdb.asia-southeast1.firebasedatabase.app", FB_NODE="antam/cauxe";
+let auth=lsGet("cauxe_auth")||null;   // {idToken, refreshToken, exp, email}
+function lsGet(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
+function lsSet(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+async function fbPost(url, body, form){ const r=await fetch(url,{method:"POST",headers:{"Content-Type":form?"application/x-www-form-urlencoded":"application/json"},body:form?body:JSON.stringify(body)}); const j=await r.json().catch(()=>({})); if(!r.ok){ const m=(j.error&&(j.error.message||j.error))||r.statusText; throw new Error({INVALID_PASSWORD:"Sai mật khẩu",EMAIL_NOT_FOUND:"Không có tài khoản này",INVALID_LOGIN_CREDENTIALS:"Sai email hoặc mật khẩu",USER_DISABLED:"Tài khoản bị khoá"}[m]||m); } return j; }
+async function login(email, pass){
+  const j=await fbPost(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FB_KEY}`,{email,password:pass,returnSecureToken:true});
+  auth={idToken:j.idToken, refreshToken:j.refreshToken, exp:Date.now()+(+j.expiresIn-60)*1000, email}; lsSet("cauxe_auth",auth); return auth;
+}
+async function token(){
+  if (!auth) return null;
+  if (Date.now()>=auth.exp){ try{ const j=await fbPost(`https://securetoken.googleapis.com/v1/token?key=${FB_KEY}`,`grant_type=refresh_token&refresh_token=${encodeURIComponent(auth.refreshToken)}`,true);
+    auth={...auth, idToken:j.id_token, refreshToken:j.refresh_token, exp:Date.now()+(+j.expires_in-60)*1000}; lsSet("cauxe_auth",auth); }catch(e){ auth=null; lsSet("cauxe_auth",null); return null; } }
+  return auth.idToken;
+}
+async function fbGet(path){ const t=await token(); if(!t) return null; const r=await fetch(`${FB_DB}/${FB_NODE}/${path}.json?auth=${t}`); if(!r.ok) throw new Error("Firebase từ chối đọc ("+r.status+")"); return r.json(); }
+async function fbPut(path, data){ const t=await token(); if(!t) return; const r=await fetch(`${FB_DB}/${FB_NODE}/${path}.json?auth=${t}`,{method:"PUT",body:JSON.stringify(data)}); if(!r.ok) throw new Error("Firebase từ chối ghi ("+r.status+") – kiểm tra Rules nhánh antam"); }
+function setAuthUI(){ const on=!!auth; $("loginBox").hidden=on; $("btnLogout").hidden=!on; $("dbpill").textContent=on?`dữ liệu dùng chung – ${auth.email}`:"chưa đăng nhập – lưu trên máy này"; $("dbpill").className=on?"pill":"pill off"; }
+function scheduleSave(){ clearTimeout(saveTimer); saveTimer=setTimeout(saveState, 800); }
+async function saveState(){
+  const cfg={}; for (const k of Object.keys(DEFAULTS)) cfg[k]=P[k];
+  lsSet("cauxe_cfg", cfg); lsSet("cauxe_sent", sent);
+  if (auth && dbReady){ try{ await fbPut("config",{p:cfg,t:new Date().toISOString()}); await fbPut("sent",sent); }catch(e){ console.warn(e); toast(e.message); } }
+}
+async function pullRemote(first){
+  try{
+    const c=await fbGet("config"); const s=await fbGet("sent"); const lg=await fbGet("exports");
+    if (first && c && c.p){ P={...DEFAULTS, ...c.p}; setForm(P); }
+    const m=s||{}; if (JSON.stringify(m)!==JSON.stringify(sent)){ sent=m; lsSet("cauxe_sent",sent); }
+    if (lg){ logs=Object.values(lg).sort((a,b)=>(b.t||"").localeCompare(a.t||"")).slice(0,60); lsSet("cauxe_log",logs); }
+    dbReady=true; setAuthUI(); recalc(); renderLog();
+  }catch(e){ console.warn(e); dbReady=false; toast(e.message); }
+}
+async function initStore(){
+  const cfg=lsGet("cauxe_cfg"); if (cfg){ P={...DEFAULTS, ...cfg}; } sent=lsGet("cauxe_sent")||{}; logs=lsGet("cauxe_log")||[];
+  setForm(P); recalc(); renderLog(); setAuthUI();
+  if (auth && await token()){ await pullRemote(true); setInterval(()=>{ if(auth) pullRemote(false); }, 20000); } else { auth=null; setAuthUI(); }
+}
+async function logExport(entry){
+  logs.unshift(entry); logs=logs.slice(0,60); lsSet("cauxe_log", logs); renderLog();
+  if (auth && dbReady){ try{ await fbPut("exports/"+entry.t.replace(/[:.]/g,"-"), entry); }catch(e){} }
+}
+$("btnLogin").onclick=async()=>{ try{ $("btnLogin").disabled=true; await login($("lg_email").value.trim(), $("lg_pass").value); $("lg_pass").value=""; setAuthUI(); await pullRemote(true); setInterval(()=>{ if(auth) pullRemote(false); }, 20000); toast("Đã đăng nhập."); }catch(e){ toast("Đăng nhập lỗi: "+e.message); } $("btnLogin").disabled=false; };
+$("lg_pass").addEventListener("keydown",e=>{ if(e.key==="Enter") $("btnLogin").click(); });
+$("btnLogout").onclick=()=>{ auth=null; lsSet("cauxe_auth",null); dbReady=false; setAuthUI(); toast("Đã đăng xuất – giờ chỉ lưu trên máy này."); };
+
+// ---- tải file (trình duyệt thường: tải thẳng)
+function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("on"); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove("on"), 3500); }
+async function saveFile(name, data){
+  const blob = data instanceof Blob ? data : new Blob([data],{type:"application/octet-stream"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},2000);
+}
+function stampBase(){ const d=new Date(); const z=n=>String(n).padStart(2,"0"); return `${z(d.getHours())}-${z(d.getMinutes())}-${z(d.getSeconds())}`; }
+async function sendChecked(){
+  if (!RES) return toast("Số liệu chưa hợp lệ.");
+  const all=[...RES.groups, RES.taycam]; const avail=all.filter(g=>!sent[g.name]);
+  const chosen=avail.filter(g=>checked.has(g.name)); const use=chosen.length?chosen:avail;
+  if (!use.length) return toast("Không còn khối nào để gửi. Bấm ↩ Hoàn lại nếu cần.");
+  const nPrev=all.filter(g=>sent[g.name]).length;
+  const base=`${stampBase()}_cau_${fmt(P.doc_len)}x${fmt(P.ngang_len)}_lan${String(nPrev+1).padStart(2,"0")}`;
+  const files=exportByKind(use, base, RES.row_gap, RES.vach, +P.group_gap||40, !!P.dxf_block);
+  $("btnSend").disabled=true;
+  try{
+    if (files.length===1) await saveFile(files[0].name, files[0].data);
+    else await saveFile(`cauxe_${base}.zip`, makeZip(files));
+    const t=new Date().toISOString();
+    for (const g of use){ sent[g.name]=t; checked.delete(g.name); }
+    await logExport({t, files:files.map(f=>f.name.split("/").pop()), blocks:use.map(g=>g.name)});
+    draw(); renderSent(); saveState();
+    $("status").textContent=`Đã tải ${files.length} file (${files.map(f=>KIND_LABEL[f.kind]).join(", ")}; ${use.length} khối). Cầu nối ở máy xưởng sẽ nạp vào CypCut.`;
+    toast("Đã tải file – cầu nối CypCut sẽ tự nạp.");
+  }catch(e){ toast(e.code==="declined" ? "Bạn đã huỷ tải file." : "Không tải được: "+(e.message||e.code||e)); }
+  $("btnSend").disabled=false;
+}
+async function exportAll(){
+  if (!RES) return toast("Số liệu chưa hợp lệ.");
+  const all=[...RES.groups, RES.taycam];
+  const base=`cau_${fmt(P.doc_len)}x${fmt(P.ngang_len)}_${Math.trunc(P.doc_qty)}doc_${Math.trunc(P.ngang_qty)}ngang`;
+  const files=exportByKind(all, base, RES.row_gap, RES.vach, +P.group_gap||40, !!P.dxf_block);
+  files.push({name:`${base}_bangcat.txt`, data:cutListText(P,RES), kind:"txt"});
+  try{ await saveFile(`${base}_full.zip`, makeZip(files)); toast("Đã tải file zip gồm 4 bản vẽ + bảng cắt."); }
+  catch(e){ toast(e.code==="declined" ? "Bạn đã huỷ tải file." : "Không tải được: "+(e.message||e.code||e)); }
+}
+
+// ---- sự kiện
+for (const el of document.querySelectorAll("#left input, #left select")) el.addEventListener("input", recalc);
+$("btnSend").onclick=sendChecked; $("btnExportAll").onclick=exportAll;
+$("btnAll").onclick=()=>{ if (RES) for (const g of [...RES.groups,RES.taycam]) if (!sent[g.name]) checked.add(g.name); draw(); };
+$("btnNone").onclick=()=>{ checked.clear(); draw(); };
+$("btnRestoreSel").onclick=()=>{ for (const n of sentSel) delete sent[n]; sentSel.clear(); draw(); renderSent(); saveState(); };
+$("btnRestoreAll").onclick=()=>{ sent={}; sentSel.clear(); draw(); renderSent(); saveState(); };
+$("btnSave").onclick=()=>{ saveState(); toast("Đã lưu thông số."); };
+$("btnReset").onclick=()=>{ setForm(DEFAULTS); recalc(); toast("Đã về thông số mặc định."); };
+initStore();
+</script>
+
+</body>
+</html>
