@@ -28,6 +28,7 @@ body{background:var(--bg);color:var(--fg);font-family:var(--font);font-size:13px
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:10px}
 header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
 header h1{font-size:17px;margin:0;font-weight:700;color:var(--accent)}
+.ver{font-size:11px;font-weight:500;color:var(--muted);margin-left:4px}
 header .st{color:var(--muted);font-size:12px;flex:1;min-width:0}
 .pill{font-size:11px;padding:2px 8px;border-radius:99px;background:var(--accent-soft);color:var(--accent);font-weight:600}
 .pill.off{background:var(--warn-soft);color:var(--warn)}
@@ -83,7 +84,7 @@ canvas{width:100%;display:block;background:var(--panel);border-radius:6px;cursor
 </head>
 <body>
 <header>
-  <h1>Cầu dắt xe gấp gọn – bản vẽ khoan &amp; cắt</h1>
+  <h1>Cầu dắt xe gấp gọn – bản vẽ khoan &amp; cắt <span class="ver">v4</span></h1>
   <span id="dbpill" class="pill off">chưa kết nối – lưu trên máy này</span>
   <span id="whopill" class="pill" hidden></span>
   <button class="small" id="btnSetup">⚙ Kết nối máy</button>
@@ -175,6 +176,7 @@ canvas{width:100%;display:block;background:var(--panel);border-radius:6px;cursor
     <button class="primary" id="btnSend">⚡ Gửi khối ĐÃ TÍCH sang CypCut</button>
     <button id="btnAll">Tích tất cả</button><button id="btnNone">Bỏ tích</button>
   </div>
+  <label class="chk"><input type="checkbox" id="dl_each">Tải thành từng file .dxf riêng (không gộp .zip)</label>
   <div class="btns">
     <button id="btnExportAll">💾 Tải đủ 4 file DXF + bảng cắt</button>
     <button id="btnSave">Lưu thông số</button>
@@ -574,7 +576,7 @@ async function sendChecked(){
   const files=exportByKind(use, base, RES.row_gap, RES.vach, +P.group_gap||40, !!P.dxf_block);
   $("btnSend").disabled=true;
   try{
-    if (files.length===1) await saveFile(files[0].name, files[0].data);
+    if (files.length===1 || $("dl_each").checked){ for (const f of files){ await saveFile(f.name, f.data); await new Promise(r=>setTimeout(r,400)); } }
     else await saveFile(`cauxe_${base}.zip`, makeZip(files));
     const t=new Date().toISOString();
     for (const g of use){ sent[g.name]=t; checked.delete(g.name); }
@@ -591,12 +593,13 @@ async function exportAll(){
   const base=`cau_${fmt(P.doc_len)}x${fmt(P.ngang_len)}_${Math.trunc(P.doc_qty)}doc_${Math.trunc(P.ngang_qty)}ngang`;
   const files=exportByKind(all, base, RES.row_gap, RES.vach, +P.group_gap||40, !!P.dxf_block);
   files.push({name:`${base}_bangcat.txt`, data:cutListText(P,RES), kind:"txt"});
-  try{ await saveFile(`${base}_full.zip`, makeZip(files)); toast("Đã tải file zip gồm 4 bản vẽ + bảng cắt."); }
+  try{ if ($("dl_each").checked){ for (const f of files){ await saveFile(f.name, f.data); await new Promise(r=>setTimeout(r,400)); } toast("Đã tải từng file."); } else { await saveFile(`${base}_full.zip`, makeZip(files)); toast("Đã tải file zip gồm 4 bản vẽ + bảng cắt."); } }
   catch(e){ toast(e.code==="declined" ? "Bạn đã huỷ tải file." : "Không tải được: "+(e.message||e.code||e)); }
 }
 
 // ---- sự kiện
 for (const el of document.querySelectorAll("#left input, #left select")) el.addEventListener("input", recalc);
+$("dl_each").checked=!!lsGet("cauxe_dl_each"); $("dl_each").addEventListener("change",()=>lsSet("cauxe_dl_each",$("dl_each").checked));
 $("btnSend").onclick=sendChecked; $("btnExportAll").onclick=exportAll;
 $("btnAll").onclick=()=>{ if (RES) for (const g of [...RES.groups,RES.taycam]) if (!sent[g.name]) checked.add(g.name); draw(); };
 $("btnNone").onclick=()=>{ checked.clear(); draw(); };
