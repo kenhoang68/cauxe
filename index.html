@@ -84,7 +84,7 @@ canvas{width:100%;display:block;background:var(--panel);border-radius:6px;cursor
 </head>
 <body>
 <header>
-  <h1>Cầu dắt xe gấp gọn – bản vẽ khoan &amp; cắt <span class="ver">v5</span></h1>
+  <h1>Cầu dắt xe gấp gọn – bản vẽ khoan &amp; cắt <span class="ver">v6</span></h1>
   <span id="dbpill" class="pill off">chưa kết nối – lưu trên máy này</span>
   <span id="whopill" class="pill" hidden></span>
   <button class="small" id="btnSetup">⚙ Kết nối máy</button>
@@ -176,13 +176,13 @@ canvas{width:100%;display:block;background:var(--panel);border-radius:6px;cursor
     <button class="primary" id="btnSend">⚡ Gửi khối ĐÃ TÍCH sang CypCut</button>
     <button id="btnAll">Tích tất cả</button><button id="btnNone">Bỏ tích</button>
   </div>
-  <div class="btns" style="margin-top:6px"><button id="btnDir">📁 Chọn thư mục lưu…</button><span id="dirInfo" class="hint" style="margin:0;align-self:center">Chưa chọn – file sẽ tải về Downloads dạng .zip (giải nén ra đúng thư mục)</span></div>
   <div class="btns">
     <button id="btnExportAll">💾 Xuất đủ 4 file DXF + bảng cắt</button>
     <button id="btnSave">Lưu thông số</button>
     <button id="btnReset">Về mặc định</button>
   </div>
-  <p class="hint">Tích ô ☐ ở đầu mỗi khối trên bản vẽ (không tích = gửi tất cả khối còn lại). Mỗi lần xuất = 1 thư mục “giờ-phút-giây_ngày-tháng-năm” chứa các file .dxf theo loại (sống dọc / sống ngang / bản lề / tay cầm), không có chữ chú thích. Ở máy xưởng “cầu nối CypCut” tự nạp vào CypCut. Khối đã gửi chuyển xuống ô “Đã chuyển sang CypCut”. Máy xưởng: quản lý bấm ⚙ Kết nối máy một lần (tài khoản Firebase như app Quản lý Lương), sau đó thợ chọn tên + PIN như bên Quản lý Lương.</p>
+  <p class="hint" id="dirInfo"></p>
+  <p class="hint">Tích ô ☐ ở đầu mỗi khối trên bản vẽ (không tích = gửi tất cả khối còn lại). Mỗi lần xuất = 1 thư mục “giờ-phút-giây_ngày-tháng-năm” chứa các file .dxf theo loại (sống dọc / sống ngang / bản lề / tay cầm), không có chữ chú thích. Ở máy xưởng “cầu nối CypCut” thấy thư mục mới là tự nạp vào CypCut. Khối đã gửi chuyển xuống ô “Đã chuyển sang CypCut”. Máy xưởng: quản lý bấm ⚙ Kết nối máy một lần (tài khoản Firebase như app Quản lý Lương), sau đó thợ chọn tên + PIN như bên Quản lý Lương.</p>
 </div>
 
 <div class="right">
@@ -572,7 +572,11 @@ let dirHandle=null;
 function idb(){ return new Promise((res,rej)=>{ const r=indexedDB.open("cauxe",1); r.onupgradeneeded=()=>r.result.createObjectStore("kv"); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
 async function idbGet(k){ try{ const db=await idb(); return await new Promise((res,rej)=>{ const t=db.transaction("kv").objectStore("kv").get(k); t.onsuccess=()=>res(t.result); t.onerror=()=>rej(t.error); }); }catch(e){ return null; } }
 async function idbSet(k,v){ try{ const db=await idb(); await new Promise((res,rej)=>{ const t=db.transaction("kv","readwrite").objectStore("kv").put(v,k); t.onsuccess=()=>res(); t.onerror=()=>rej(t.error); }); }catch(e){} }
-function dirUI(){ $("dirInfo").textContent = dirHandle ? `Lưu vào thư mục “${dirHandle.name}” – mỗi lần xuất tạo thư mục con giờ-phút-giây_ngày-tháng-năm` : "Chưa chọn – file sẽ tải về Downloads dạng .zip (giải nén ra đúng thư mục)"; }
+function dirUI(){ const el=$("dirInfo"); el.innerHTML="";
+  if (!window.showDirectoryPicker){ el.textContent="Trình duyệt này không cho ghi thẳng thư mục – dùng Chrome/Edge. Tạm thời file tải về dạng nén."; return; }
+  el.append(dirHandle ? `Xuất vào thư mục “${dirHandle.name}” (mỗi lần xuất tạo thư mục con giờ-phút-giây_ngày-tháng-năm). ` : "Lần xuất đầu tiên Chrome sẽ hỏi chọn thư mục lưu (ví dụ Desktop\\SapXepPhoi\\CauXe) – chọn 1 lần. ");
+  const a=document.createElement("a"); a.href="#"; a.textContent=dirHandle?"Đổi thư mục":"Chọn trước"; a.onclick=e=>{ e.preventDefault(); pickDir(); }; el.append(a); }
+async function pickDir(){ try{ dirHandle=await window.showDirectoryPicker({mode:"readwrite"}); await idbSet("dir",dirHandle); dirUI(); return true; }catch(e){ if(e.name!=="AbortError") toast("Không chọn được thư mục: "+e.message); return false; } }
 async function dirReady(){
   if (!dirHandle) return false;
   try{ let p=await dirHandle.queryPermission({mode:"readwrite"}); if (p!=="granted") p=await dirHandle.requestPermission({mode:"readwrite"}); return p==="granted"; }catch(e){ return false; }
@@ -582,13 +586,14 @@ async function writeToDir(folder, files){
   for (const f of files){ const fh=await sub.getFileHandle(f.name,{create:true}); const w=await fh.createWritable(); await w.write(f.data); await w.close(); }
 }
 async function deliver(folder, files){
-  // trả về mô tả nơi đã lưu
-  if (dirHandle && await dirReady()){ await writeToDir(folder, files); return `thư mục ${dirHandle.name}\\${folder}`; }
+  // ghi thẳng thư mục (Chrome/Edge); chưa chọn thư mục thì hỏi chọn ngay; trình duyệt không hỗ trợ -> file nén
+  if (window.showDirectoryPicker){
+    if (!dirHandle || !(await dirReady())){ if (!(await pickDir())) throw {code:"declined"}; if (!(await dirReady())) throw new Error("Chưa được phép ghi vào thư mục."); }
+    await writeToDir(folder, files); return `thư mục ${dirHandle.name}\\${folder}`;
+  }
   await saveFile(`${folder}.zip`, makeZip(files.map(f=>({name:`${folder}/${f.name}`, data:f.data}))));
-  return `file ${folder}.zip trong Downloads (giải nén ra thư mục ${folder})`;
+  return `file ${folder}.zip trong Downloads`;
 }
-if (!window.showDirectoryPicker){ $("btnDir").hidden=true; }
-$("btnDir").onclick=async()=>{ try{ dirHandle=await window.showDirectoryPicker({mode:"readwrite"}); await idbSet("dir",dirHandle); dirUI(); toast("Từ giờ xuất thẳng vào thư mục này."); }catch(e){ if(e.name!=="AbortError") toast("Không chọn được thư mục: "+e.message); } };
 idbGet("dir").then(h=>{ if(h){ dirHandle=h; } dirUI(); });
 async function sendChecked(){
   if (!RES) return toast("Số liệu chưa hợp lệ.");
