@@ -84,7 +84,7 @@ canvas{width:100%;display:block;background:var(--panel);border-radius:6px;cursor
 </head>
 <body>
 <header>
-  <h1>Cầu dắt xe gấp gọn – bản vẽ khoan &amp; cắt <span class="ver">v4</span></h1>
+  <h1>Cầu dắt xe gấp gọn – bản vẽ khoan &amp; cắt <span class="ver">v5</span></h1>
   <span id="dbpill" class="pill off">chưa kết nối – lưu trên máy này</span>
   <span id="whopill" class="pill" hidden></span>
   <button class="small" id="btnSetup">⚙ Kết nối máy</button>
@@ -176,13 +176,13 @@ canvas{width:100%;display:block;background:var(--panel);border-radius:6px;cursor
     <button class="primary" id="btnSend">⚡ Gửi khối ĐÃ TÍCH sang CypCut</button>
     <button id="btnAll">Tích tất cả</button><button id="btnNone">Bỏ tích</button>
   </div>
-  <label class="chk"><input type="checkbox" id="dl_each">Tải thành từng file .dxf riêng (không gộp .zip)</label>
+  <div class="btns" style="margin-top:6px"><button id="btnDir">📁 Chọn thư mục lưu…</button><span id="dirInfo" class="hint" style="margin:0;align-self:center">Chưa chọn – file sẽ tải về Downloads dạng .zip (giải nén ra đúng thư mục)</span></div>
   <div class="btns">
-    <button id="btnExportAll">💾 Tải đủ 4 file DXF + bảng cắt</button>
+    <button id="btnExportAll">💾 Xuất đủ 4 file DXF + bảng cắt</button>
     <button id="btnSave">Lưu thông số</button>
     <button id="btnReset">Về mặc định</button>
   </div>
-  <p class="hint">Tích ô ☐ ở đầu mỗi khối trên bản vẽ (không tích = gửi tất cả khối còn lại). File tải về máy xưởng, “cầu nối CypCut” tự nạp vào CypCut. Khối đã gửi chuyển xuống ô “Đã chuyển sang CypCut”. Máy xưởng: quản lý bấm ⚙ Kết nối máy một lần (tài khoản Firebase như app Quản lý Lương), sau đó thợ chọn tên + PIN như bên Quản lý Lương.</p>
+  <p class="hint">Tích ô ☐ ở đầu mỗi khối trên bản vẽ (không tích = gửi tất cả khối còn lại). Mỗi lần xuất = 1 thư mục “giờ-phút-giây_ngày-tháng-năm” chứa các file .dxf theo loại (sống dọc / sống ngang / bản lề / tay cầm), không có chữ chú thích. Ở máy xưởng “cầu nối CypCut” tự nạp vào CypCut. Khối đã gửi chuyển xuống ô “Đã chuyển sang CypCut”. Máy xưởng: quản lý bấm ⚙ Kết nối máy một lần (tài khoản Firebase như app Quản lý Lương), sau đó thợ chọn tên + PIN như bên Quản lý Lương.</p>
 </div>
 
 <div class="right">
@@ -343,7 +343,7 @@ function DxfWriter(){
   };
 }
 function drawGroup(dxf, arr, g, ox, oy, gap, vach, label){
-  const {circle,line,poly,text}=dxf.api; const L=g.length, H=g.height;
+  const {circle,line,poly}=dxf.api; const L=g.length, H=g.height;
   if (g.outline){
     for (let r=0;r<g.rows;r++){ const y0=oy+r*(g.face+gap);
       poly(arr, g.outline.map(([x,y])=>[ox+x,y0+y,0]), "VIEN", true);
@@ -357,13 +357,13 @@ function drawGroup(dxf, arr, g, ox, oy, gap, vach, label){
   for (const [x,y,d] of g.holes) circle(arr,ox+x,oy+y,d/2,d>=5?"LO_TO":"LO_NHO");
   for (const [x0,x1,y,wd] of (g.slots||[])){ const rr=wd/2, a=ox+x0+rr, b=ox+x1-rr, cy=oy+y;
     poly(arr,[[a,cy-rr,0],[b,cy-rr,1],[b,cy+rr,0],[a,cy+rr,1]],"LO_TO",true); }
-  if (label) text(arr, ox, oy+H+4, 6, g.name, "NHAN");
+  // không ghi chữ chú thích vào DXF (vào CypCut khỏi phải xoá)
 }
 function exportGroups(groups, rowGap, vach, groupGap, asBlock){
   const dxf=new DxfWriter(); dxf.layers=[["VIEN",7],["VACH",8],["LO_TO",1],["LO_NHO",5],["NHAN",3]];
   groups.forEach((_,i)=>dxf.layers.push([`KHOI_${String(i+1).padStart(2,"0")}`,7]));
   let y=0; groups.forEach((g,i)=>{ const bn=`KHOI_${String(i+1).padStart(2,"0")}`;
-    if (asBlock){ const b={name:bn,ents:[]}; drawGroup(dxf,b.ents,g,0,0,rowGap,vach,false); dxf.blocks.push(b); dxf.api.insert(dxf.ents,bn,0,y,bn); dxf.api.text(dxf.ents,0,y+g.height+4,6,g.name,"NHAN"); }
+    if (asBlock){ const b={name:bn,ents:[]}; drawGroup(dxf,b.ents,g,0,0,rowGap,vach,false); dxf.blocks.push(b); dxf.api.insert(dxf.ents,bn,0,y,bn); }
     else drawGroup(dxf,dxf.ents,g,0,y,rowGap,vach,true);
     y+=g.height+groupGap; });
   return dxf.toString();
@@ -566,24 +566,48 @@ async function saveFile(name, data){
   const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},2000);
 }
 function stampBase(){ const d=new Date(); const z=n=>String(n).padStart(2,"0"); return `${z(d.getHours())}-${z(d.getMinutes())}-${z(d.getSeconds())}`; }
+function folderName(){ const d=new Date(); const z=n=>String(n).padStart(2,"0"); return `${z(d.getHours())}-${z(d.getMinutes())}-${z(d.getSeconds())}_${z(d.getDate())}-${z(d.getMonth()+1)}-${d.getFullYear()}`; }
+// ---- thư mục lưu trực tiếp (Chrome/Edge: File System Access API); handle nhớ trong IndexedDB
+let dirHandle=null;
+function idb(){ return new Promise((res,rej)=>{ const r=indexedDB.open("cauxe",1); r.onupgradeneeded=()=>r.result.createObjectStore("kv"); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+async function idbGet(k){ try{ const db=await idb(); return await new Promise((res,rej)=>{ const t=db.transaction("kv").objectStore("kv").get(k); t.onsuccess=()=>res(t.result); t.onerror=()=>rej(t.error); }); }catch(e){ return null; } }
+async function idbSet(k,v){ try{ const db=await idb(); await new Promise((res,rej)=>{ const t=db.transaction("kv","readwrite").objectStore("kv").put(v,k); t.onsuccess=()=>res(); t.onerror=()=>rej(t.error); }); }catch(e){} }
+function dirUI(){ $("dirInfo").textContent = dirHandle ? `Lưu vào thư mục “${dirHandle.name}” – mỗi lần xuất tạo thư mục con giờ-phút-giây_ngày-tháng-năm` : "Chưa chọn – file sẽ tải về Downloads dạng .zip (giải nén ra đúng thư mục)"; }
+async function dirReady(){
+  if (!dirHandle) return false;
+  try{ let p=await dirHandle.queryPermission({mode:"readwrite"}); if (p!=="granted") p=await dirHandle.requestPermission({mode:"readwrite"}); return p==="granted"; }catch(e){ return false; }
+}
+async function writeToDir(folder, files){
+  const sub=await dirHandle.getDirectoryHandle(folder,{create:true});
+  for (const f of files){ const fh=await sub.getFileHandle(f.name,{create:true}); const w=await fh.createWritable(); await w.write(f.data); await w.close(); }
+}
+async function deliver(folder, files){
+  // trả về mô tả nơi đã lưu
+  if (dirHandle && await dirReady()){ await writeToDir(folder, files); return `thư mục ${dirHandle.name}\\${folder}`; }
+  await saveFile(`${folder}.zip`, makeZip(files.map(f=>({name:`${folder}/${f.name}`, data:f.data}))));
+  return `file ${folder}.zip trong Downloads (giải nén ra thư mục ${folder})`;
+}
+if (!window.showDirectoryPicker){ $("btnDir").hidden=true; }
+$("btnDir").onclick=async()=>{ try{ dirHandle=await window.showDirectoryPicker({mode:"readwrite"}); await idbSet("dir",dirHandle); dirUI(); toast("Từ giờ xuất thẳng vào thư mục này."); }catch(e){ if(e.name!=="AbortError") toast("Không chọn được thư mục: "+e.message); } };
+idbGet("dir").then(h=>{ if(h){ dirHandle=h; } dirUI(); });
 async function sendChecked(){
   if (!RES) return toast("Số liệu chưa hợp lệ.");
   const all=[...RES.groups, RES.taycam]; const avail=all.filter(g=>!sent[g.name]);
   const chosen=avail.filter(g=>checked.has(g.name)); const use=chosen.length?chosen:avail;
   if (!use.length) return toast("Không còn khối nào để gửi. Bấm ↩ Hoàn lại nếu cần.");
   const nPrev=all.filter(g=>sent[g.name]).length;
-  const base=`${stampBase()}_cau_${fmt(P.doc_len)}x${fmt(P.ngang_len)}_lan${String(nPrev+1).padStart(2,"0")}`;
+  const folder=folderName();
+  const base=`cau_${fmt(P.doc_len)}x${fmt(P.ngang_len)}_lan${String(nPrev+1).padStart(2,"0")}`;
   const files=exportByKind(use, base, RES.row_gap, RES.vach, +P.group_gap||40, !!P.dxf_block);
   $("btnSend").disabled=true;
   try{
-    if (files.length===1 || $("dl_each").checked){ for (const f of files){ await saveFile(f.name, f.data); await new Promise(r=>setTimeout(r,400)); } }
-    else await saveFile(`cauxe_${base}.zip`, makeZip(files));
+    const where=await deliver(folder, files);
     const t=new Date().toISOString();
     for (const g of use){ sent[g.name]=t; checked.delete(g.name); }
-    await logExport({t, files:files.map(f=>f.name.split("/").pop()), blocks:use.map(g=>g.name), by: who?who.name:""});
+    await logExport({t, files:[folder+"/"].concat(files.map(f=>f.name)), blocks:use.map(g=>g.name), by: who?who.name:""});
     draw(); renderSent(); saveState();
-    $("status").textContent=`Đã tải ${files.length} file (${files.map(f=>KIND_LABEL[f.kind]).join(", ")}; ${use.length} khối). Cầu nối ở máy xưởng sẽ nạp vào CypCut.`;
-    toast("Đã tải file – cầu nối CypCut sẽ tự nạp.");
+    $("status").textContent=`Đã xuất ${files.length} file (${files.map(f=>KIND_LABEL[f.kind]).join(", ")}; ${use.length} khối) vào ${where}. Cầu nối ở máy xưởng sẽ nạp vào CypCut.`;
+    toast("Đã xuất – cầu nối CypCut sẽ tự nạp.");
   }catch(e){ toast(e.code==="declined" ? "Bạn đã huỷ tải file." : "Không tải được: "+(e.message||e.code||e)); }
   $("btnSend").disabled=false;
 }
@@ -593,13 +617,12 @@ async function exportAll(){
   const base=`cau_${fmt(P.doc_len)}x${fmt(P.ngang_len)}_${Math.trunc(P.doc_qty)}doc_${Math.trunc(P.ngang_qty)}ngang`;
   const files=exportByKind(all, base, RES.row_gap, RES.vach, +P.group_gap||40, !!P.dxf_block);
   files.push({name:`${base}_bangcat.txt`, data:cutListText(P,RES), kind:"txt"});
-  try{ if ($("dl_each").checked){ for (const f of files){ await saveFile(f.name, f.data); await new Promise(r=>setTimeout(r,400)); } toast("Đã tải từng file."); } else { await saveFile(`${base}_full.zip`, makeZip(files)); toast("Đã tải file zip gồm 4 bản vẽ + bảng cắt."); } }
-  catch(e){ toast(e.code==="declined" ? "Bạn đã huỷ tải file." : "Không tải được: "+(e.message||e.code||e)); }
+  try{ const where=await deliver(folderName()+"_full", files); toast("Đã xuất 4 bản vẽ + bảng cắt vào "+where); }
+  catch(e){ toast(e.code==="declined" ? "Bạn đã huỷ." : "Không xuất được: "+(e.message||e.code||e)); }
 }
 
 // ---- sự kiện
 for (const el of document.querySelectorAll("#left input, #left select")) el.addEventListener("input", recalc);
-$("dl_each").checked=!!lsGet("cauxe_dl_each"); $("dl_each").addEventListener("change",()=>lsSet("cauxe_dl_each",$("dl_each").checked));
 $("btnSend").onclick=sendChecked; $("btnExportAll").onclick=exportAll;
 $("btnAll").onclick=()=>{ if (RES) for (const g of [...RES.groups,RES.taycam]) if (!sent[g.name]) checked.add(g.name); draw(); };
 $("btnNone").onclick=()=>{ checked.clear(); draw(); };
