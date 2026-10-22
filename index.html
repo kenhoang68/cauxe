@@ -79,18 +79,44 @@ canvas{width:100%;display:block;background:var(--panel);border-radius:6px;cursor
 .log{font-size:12px;color:var(--muted);max-height:120px;overflow:auto}
 .log div{padding:2px 0;border-bottom:1px dashed var(--line)}
 @media (prefers-reduced-motion:reduce){.toast{transition:none}}
+/* Màn vào máy: thợ chọn tên + PIN trước khi thấy app (như app Quản lý Lương) */
+.gate{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px}
+.gate .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px 24px;width:min(360px,100%);display:flex;flex-direction:column;gap:10px}
+.gate h1{font-size:18px;margin:0;color:var(--accent)}
+.gate .sub{color:var(--muted);font-size:12.5px;margin:0}
+.gate select,.gate input{font:inherit;width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);box-sizing:border-box}
+.gate input.pin{font-size:22px;letter-spacing:.4em;text-align:center;font-family:var(--mono)}
+.gate button.primary{padding:10px;font-size:14px}
+.gate .mgr{border-top:1px dashed var(--line);padding-top:10px;display:flex;flex-direction:column;gap:6px}
+.gate .mgr a{color:var(--muted);font-size:12px}
+.gate .err{color:var(--warn);font-size:12.5px;min-height:1.2em}
 </style>
 
 </head>
 <body>
+<div class="gate" id="gate">
+  <div class="card">
+    <h1>Cầu dắt xe gấp gọn</h1>
+    <p class="sub" id="gateSub">Chọn tên và nhập mã PIN để vào.</p>
+    <div id="gatePin">
+      <select id="pin_who"><option value="">— đang tải danh sách thợ… —</option></select>
+      <input type="password" id="pin_code" class="pin" inputmode="numeric" autocomplete="off" placeholder="PIN" maxlength="8" style="margin-top:8px">
+      <button class="primary" id="btnPin" style="margin-top:8px;width:100%">Vào</button>
+    </div>
+    <div id="gateLogin" hidden>
+      <input type="email" id="lg_email" placeholder="email tài khoản Firebase" autocomplete="username">
+      <input type="password" id="lg_pass" placeholder="mật khẩu" autocomplete="current-password" style="margin-top:8px">
+      <button class="primary" id="btnLogin" style="margin-top:8px;width:100%">Kết nối máy</button>
+    </div>
+    <div class="err" id="gateErr"></div>
+    <div class="mgr"><a href="#" id="btnSetup">⚙ Quản lý: kết nối máy bằng tài khoản khác</a><a href="#" id="btnLoginCancel" hidden>← Quay lại chọn thợ</a></div>
+  </div>
+</div>
 <header>
-  <h1>Cầu dắt xe gấp gọn – bản vẽ khoan &amp; cắt <span class="ver">v6</span></h1>
+  <h1>Cầu dắt xe gấp gọn – bản vẽ khoan &amp; cắt <span class="ver">v7</span></h1>
   <span id="dbpill" class="pill off">chưa kết nối – lưu trên máy này</span>
   <span id="whopill" class="pill" hidden></span>
-  <button class="small" id="btnSetup">⚙ Kết nối máy</button>
-  <span id="loginBox" class="login" hidden><input type="email" id="lg_email" placeholder="email tài khoản Firebase" autocomplete="username"><input type="password" id="lg_pass" placeholder="mật khẩu" autocomplete="current-password"><button class="small" id="btnLogin">Kết nối</button><button class="small" id="btnLoginCancel">Huỷ</button></span>
-  <span id="pinBox" class="login" hidden><select id="pin_who"></select><input type="password" id="pin_code" inputmode="numeric" placeholder="PIN" style="width:70px"><button class="small" id="btnPin">Vào</button></span>
-  <button class="small" id="btnWhoOut" hidden>Đổi thợ</button>
+  <button class="small" id="btnWhoOut">Đổi thợ</button>
   <button class="small" id="btnLogout" hidden>Gỡ kết nối</button>
   <span id="status" class="st">Sửa thông số bên trái, tích khối trên bản vẽ rồi bấm “Gửi sang CypCut”.</span>
 </header>
@@ -506,31 +532,47 @@ async function token(){
 }
 async function fbGet(path){ const t=await token(); if(!t) return null; const r=await fetch(`${FB_DB}/${FB_NODE}/${path}.json?auth=${t}`); if(!r.ok) throw new Error("Firebase từ chối đọc ("+r.status+")"); return r.json(); }
 async function fbPut(path, data){ const t=await token(); if(!t) return; const r=await fetch(`${FB_DB}/${FB_NODE}/${path}.json?auth=${t}`,{method:"PUT",body:JSON.stringify(data)}); if(!r.ok) throw new Error("Firebase từ chối ghi ("+r.status+") – kiểm tra Rules nhánh antam"); }
+// Tài khoản thợ dùng chung (chỉ quyền thợ) – web tự kết nối ngầm như app Quản lý Lương; thợ chỉ cần chọn tên + PIN
+const WORKER_FB_EMAIL="", WORKER_FB_PASS="";
 let who=lsGet("cauxe_who")||null;   // {id,name} thợ đang dùng máy (đăng nhập bằng PIN như app Quản lý Lương)
 let employees=[];
+function gateErr(m){ $("gateErr").textContent=m||""; }
 function setAuthUI(){
-  const on=!!auth; $("btnLogout").hidden=!on; $("btnSetup").hidden=on||!$("loginBox").hidden;
+  const on=!!auth; $("btnLogout").hidden=!on;
   $("dbpill").textContent=on?"máy đã kết nối – dữ liệu dùng chung":"chưa kết nối – lưu trên máy này"; $("dbpill").className=on?"pill":"pill off";
-  $("whopill").hidden=!(on&&who); $("whopill").textContent=who?`Thợ: ${who.name}`:""; $("btnWhoOut").hidden=!(on&&who);
-  $("pinBox").hidden=!(on&&!who&&employees.length);
+  $("whopill").hidden=!who; $("whopill").textContent=who?`Thợ: ${who.name}`:"";
+  // màn vào máy: ẩn khi đã có thợ; chưa kết nối được thì hiện form kết nối cho quản lý
+  $("gate").hidden=!!who;
+  const needLogin=!on && !(WORKER_FB_EMAIL&&WORKER_FB_PASS);
+  const showLogin=needLogin || !$("btnLoginCancel").hidden;
+  $("gatePin").hidden=showLogin; $("gateLogin").hidden=!showLogin; $("btnSetup").hidden=showLogin; $("btnLoginCancel").hidden=!showLogin||needLogin;
+  $("gateSub").textContent=showLogin?(needLogin?"Máy này chưa kết nối. Quản lý nhập tài khoản Firebase (1 lần).":"Kết nối máy bằng tài khoản khác."):(on?"Chọn tên và nhập mã PIN để vào.":"Đang kết nối máy…");
+  if (!showLogin && on && !employees.length) $("gateSub").textContent="Đang tải danh sách thợ…";
 }
 async function loadEmployees(){
   try{
     const t=await token(); if(!t) return;
-    const r=await fetch(`${FB_DB}/antam/db/employees.json?auth=${t}`); if(!r.ok) return;
+    const r=await fetch(`${FB_DB}/antam/db/employees.json?auth=${t}`); if(!r.ok) throw new Error("Không đọc được danh sách thợ ("+r.status+")");
     const v=await r.json(); const arr=Array.isArray(v)?v:Object.values(v||{});
     employees=arr.filter(e=>e&&e.name&&e.pin&&e.active!==false).map(e=>({id:String(e.id||e.name),name:e.name,pin:String(e.pin)}));
     const sel=$("pin_who"); sel.innerHTML='<option value="">— chọn thợ —</option>'+employees.map(e=>`<option value="${e.id}">${e.name}</option>`).join("");
-  }catch(e){ console.warn("employees", e); }
+    if (!employees.length) gateErr("Chưa có thợ nào có PIN – quản lý đặt PIN trong hồ sơ nhân viên (app Quản lý Lương).");
+  }catch(e){ console.warn("employees", e); gateErr(e.message); }
   setAuthUI();
 }
-$("btnSetup").onclick=()=>{ $("loginBox").hidden=false; $("btnSetup").hidden=true; $("lg_email").focus(); };
-$("btnLoginCancel").onclick=()=>{ $("loginBox").hidden=true; setAuthUI(); };
+async function autoConnect(){
+  // chưa có phiên trên máy -> đăng nhập ngầm bằng tài khoản thợ chung
+  if (auth || !(WORKER_FB_EMAIL&&WORKER_FB_PASS)) return false;
+  try{ await login(WORKER_FB_EMAIL, WORKER_FB_PASS); return true; }catch(e){ gateErr("Không kết nối được: "+e.message); return false; }
+}
+$("btnSetup").onclick=e=>{ e.preventDefault(); $("btnLoginCancel").hidden=false; setAuthUI(); $("lg_email").focus(); };
+$("btnLoginCancel").onclick=e=>{ e.preventDefault(); $("btnLoginCancel").hidden=true; setAuthUI(); };
 $("btnPin").onclick=()=>{ const id=$("pin_who").value, pin=$("pin_code").value.trim(); const e=employees.find(x=>x.id===id);
-  if(!e) return toast("Chưa chọn thợ."); if(pin!==e.pin){ $("pin_code").value=""; return toast("Sai PIN."); }
-  who={id:e.id,name:e.name}; lsSet("cauxe_who",who); $("pin_code").value=""; setAuthUI(); toast(`Xin chào ${e.name}.`); };
+  if(!e) return gateErr("Chưa chọn thợ."); if(pin!==e.pin){ $("pin_code").value=""; return gateErr("Sai PIN."); }
+  who={id:e.id,name:e.name}; lsSet("cauxe_who",who); $("pin_code").value=""; gateErr(""); setAuthUI(); toast(`Xin chào ${e.name}.`); };
 $("pin_code").addEventListener("keydown",e=>{ if(e.key==="Enter") $("btnPin").click(); });
-$("btnWhoOut").onclick=()=>{ who=null; lsSet("cauxe_who",null); setAuthUI(); };
+$("pin_who").addEventListener("change",()=>$("pin_code").focus());
+$("btnWhoOut").onclick=()=>{ who=null; lsSet("cauxe_who",null); gateErr(""); setAuthUI(); if(!employees.length) loadEmployees(); $("pin_who").focus(); };
 function scheduleSave(){ clearTimeout(saveTimer); saveTimer=setTimeout(saveState, 800); }
 async function saveState(){
   const cfg={}; for (const k of Object.keys(DEFAULTS)) cfg[k]=P[k];
@@ -549,15 +591,17 @@ async function pullRemote(first){
 async function initStore(){
   const cfg=lsGet("cauxe_cfg"); if (cfg){ P={...DEFAULTS, ...cfg}; } sent=lsGet("cauxe_sent")||{}; logs=lsGet("cauxe_log")||[];
   setForm(P); recalc(); renderLog(); setAuthUI();
-  if (auth && await token()){ await pullRemote(true); loadEmployees(); setInterval(()=>{ if(auth) pullRemote(false); }, 20000); } else { auth=null; setAuthUI(); }
+  if (!(auth && await token())){ auth=null; await autoConnect(); }
+  if (auth){ await pullRemote(true); loadEmployees(); setInterval(()=>{ if(auth) pullRemote(false); }, 20000); }
+  setAuthUI();
 }
 async function logExport(entry){
   logs.unshift(entry); logs=logs.slice(0,60); lsSet("cauxe_log", logs); renderLog();
   if (auth && dbReady){ try{ await fbPut("exports/"+entry.t.replace(/[:.]/g,"-"), entry); }catch(e){} }
 }
-$("btnLogin").onclick=async()=>{ try{ $("btnLogin").disabled=true; await login($("lg_email").value.trim(), $("lg_pass").value); $("lg_pass").value=""; $("loginBox").hidden=true; setAuthUI(); await pullRemote(true); loadEmployees(); setInterval(()=>{ if(auth) pullRemote(false); }, 20000); toast("Máy đã kết nối. Thợ chọn tên + PIN để vào."); }catch(e){ toast("Kết nối lỗi: "+e.message); } $("btnLogin").disabled=false; };
+$("btnLogin").onclick=async()=>{ try{ $("btnLogin").disabled=true; gateErr(""); await login($("lg_email").value.trim(), $("lg_pass").value); $("lg_pass").value=""; $("btnLoginCancel").hidden=true; setAuthUI(); await pullRemote(true); await loadEmployees(); setInterval(()=>{ if(auth) pullRemote(false); }, 20000); toast("Máy đã kết nối. Thợ chọn tên + PIN để vào."); }catch(e){ gateErr("Kết nối lỗi: "+e.message); } $("btnLogin").disabled=false; };
 $("lg_pass").addEventListener("keydown",e=>{ if(e.key==="Enter") $("btnLogin").click(); });
-$("btnLogout").onclick=()=>{ auth=null; lsSet("cauxe_auth",null); dbReady=false; who=null; lsSet("cauxe_who",null); employees=[]; setAuthUI(); toast("Đã gỡ kết nối – giờ chỉ lưu trên máy này."); };
+$("btnLogout").onclick=()=>{ auth=null; lsSet("cauxe_auth",null); dbReady=false; who=null; lsSet("cauxe_who",null); employees=[]; $("btnLoginCancel").hidden=true; setAuthUI(); toast("Đã gỡ kết nối."); autoConnect().then(async ok=>{ if(ok){ await pullRemote(true); await loadEmployees(); } setAuthUI(); }); };
 
 // ---- tải file (trình duyệt thường: tải thẳng)
 function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("on"); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove("on"), 3500); }
@@ -574,9 +618,10 @@ async function idbGet(k){ try{ const db=await idb(); return await new Promise((r
 async function idbSet(k,v){ try{ const db=await idb(); await new Promise((res,rej)=>{ const t=db.transaction("kv","readwrite").objectStore("kv").put(v,k); t.onsuccess=()=>res(); t.onerror=()=>rej(t.error); }); }catch(e){} }
 function dirUI(){ const el=$("dirInfo"); el.innerHTML="";
   if (!window.showDirectoryPicker){ el.textContent="Trình duyệt này không cho ghi thẳng thư mục – dùng Chrome/Edge. Tạm thời file tải về dạng nén."; return; }
-  el.append(dirHandle ? `Xuất vào thư mục “${dirHandle.name}” (mỗi lần xuất tạo thư mục con giờ-phút-giây_ngày-tháng-năm). ` : "Lần xuất đầu tiên Chrome sẽ hỏi chọn thư mục lưu (ví dụ Desktop\\SapXepPhoi\\CauXe) – chọn 1 lần. ");
+  el.append(dirHandle ? `Tự động xuất vào thư mục “${dirHandle.name}” (mỗi lần xuất tạo thư mục con giờ-phút-giây_ngày-tháng-năm). ` : "Lần xuất đầu tiên Chrome hỏi chọn thư mục lưu – chọn 1 lần, các lần sau tự xuất. Mở vào trong thư mục Desktop\\SapXepPhoi\\CauXe rồi bấm “Chọn thư mục” (không chọn Desktop, ổ C hay thư mục người dùng – Chrome từ chối vì “chứa tệp hệ thống”). ");
   const a=document.createElement("a"); a.href="#"; a.textContent=dirHandle?"Đổi thư mục":"Chọn trước"; a.onclick=e=>{ e.preventDefault(); pickDir(); }; el.append(a); }
-async function pickDir(){ try{ dirHandle=await window.showDirectoryPicker({mode:"readwrite"}); await idbSet("dir",dirHandle); dirUI(); return true; }catch(e){ if(e.name!=="AbortError") toast("Không chọn được thư mục: "+e.message); return false; } }
+async function pickDir(){ try{ dirHandle=await window.showDirectoryPicker({mode:"readwrite", id:"cauxe", startIn:dirHandle||"desktop"}); await idbSet("dir",dirHandle); dirUI(); return true; }
+  catch(e){ if(e.name!=="AbortError") toast("Không chọn được thư mục: "+e.message); else toast("Chưa chọn thư mục. Hãy mở vào trong thư mục con (vd Desktop\\SapXepPhoi\\CauXe) rồi bấm “Chọn thư mục”."); return false; } }
 async function dirReady(){
   if (!dirHandle) return false;
   try{ let p=await dirHandle.queryPermission({mode:"readwrite"}); if (p!=="granted") p=await dirHandle.requestPermission({mode:"readwrite"}); return p==="granted"; }catch(e){ return false; }
